@@ -116,7 +116,7 @@ public class TestDatabaseResourceService {
     String[] expectedOrderArr = {
       "z_" + DB1 + ".jar",
       "y_" + DB1 + ".jar",
-      "x_" + DB1 + ".jar"
+      "x_" + DB1 + ".jar",
     };
 
     // Verify order

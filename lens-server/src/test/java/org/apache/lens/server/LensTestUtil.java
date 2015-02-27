@@ -245,7 +245,7 @@ public final class LensTestUtil {
         String[] jarOrder = {
           "x_" + db + ".jar",
           "y_" + db + ".jar",
-          "z_" + db + ".jar"
+          "z_" + db + ".jar",
         };
 
         // Jar order is -> z, y, x, File listing order is x, y, z
