@@ -49,7 +49,6 @@ import org.apache.lens.server.api.metrics.MetricsService;
 import org.apache.lens.server.api.query.QueryContext;
 import org.apache.lens.server.api.session.SessionService;
 import org.apache.lens.server.session.HiveSessionService;
-import org.apache.lens.server.session.LensSessionImpl;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
