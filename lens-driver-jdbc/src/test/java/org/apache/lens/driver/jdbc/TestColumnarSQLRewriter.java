@@ -807,7 +807,6 @@ public class TestColumnarSQLRewriter {
     queryConf.setClassLoader(createTableClassLoader);
 
     ColumnarSQLRewriter rewriter = new ColumnarSQLRewriter();
-    rewriter.queryConf = queryConf;
     rewriter.init(conf);
     rewriter.ast = HQLParser.parseHQL(query);
     rewriter.query = query;
@@ -817,7 +816,7 @@ public class TestColumnarSQLRewriter {
     System.out.println(joinTreeBeforeRewrite);
 
     // Rewrite
-    rewriter.replaceWithUnderlyingStorage(rewriter.fromAST);
+    rewriter.replaceWithUnderlyingStorage(queryConf, rewriter.fromAST);
     String joinTreeAfterRewrite = HQLParser.getString(rewriter.fromAST);
     System.out.println(joinTreeAfterRewrite);
 
@@ -845,7 +844,7 @@ public class TestColumnarSQLRewriter {
     System.out.println(joinTreeBeforeRewrite);
 
     // Rewrite
-    rewriter.replaceWithUnderlyingStorage(rewriter.fromAST);
+    rewriter.replaceWithUnderlyingStorage(queryConf, rewriter.fromAST);
     joinTreeAfterRewrite = HQLParser.getString(rewriter.fromAST);
     System.out.println(joinTreeAfterRewrite);
 
@@ -864,7 +863,7 @@ public class TestColumnarSQLRewriter {
     rewriter.query = defaultQuery;
     rewriter.analyzeInternal();
     joinTreeBeforeRewrite = HQLParser.getString(rewriter.fromAST);
-    rewriter.replaceWithUnderlyingStorage(rewriter.fromAST);
+    rewriter.replaceWithUnderlyingStorage(queryConf, rewriter.fromAST);
     joinTreeAfterRewrite = HQLParser.getString(rewriter.fromAST);
     assertTrue(joinTreeBeforeRewrite.contains("examples"), joinTreeBeforeRewrite);
     assertFalse(joinTreeAfterRewrite.contains("examples"), joinTreeAfterRewrite);
