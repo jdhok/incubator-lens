@@ -48,6 +48,11 @@ public class ColumnarSQLRewriter implements QueryRewriter {
   /** The conf. */
   private HiveConf conf;
 
+  /**
+   * Query specific conf
+   */
+  protected HiveConf queryConf;
+
   /** The clause name. */
   private String clauseName = null;
 
@@ -1034,6 +1039,8 @@ public class ColumnarSQLRewriter implements QueryRewriter {
    */
   @Override
   public synchronized String rewrite(String query, Configuration conf) throws LensException {
+    this.queryConf = new HiveConf(conf, ColumnarSQLRewriter.class);
+    this.queryConf.setClassLoader(conf.getClassLoader());
     this.query = query;
     StringBuilder mergedQuery;
     rewrittenQuery.setLength(0);
@@ -1143,7 +1150,7 @@ public class ColumnarSQLRewriter implements QueryRewriter {
    * @throws HiveException the hive exception
    */
   String getUnderlyingDBName(String table) throws HiveException {
-    Table tbl = Hive.get(this.conf).getTable(table);
+    Table tbl = Hive.get(this.queryConf).getTable(table);
     return tbl == null ? null : tbl.getProperty(LensConfConstants.NATIVE_DB_NAME);
   }
 
@@ -1155,7 +1162,7 @@ public class ColumnarSQLRewriter implements QueryRewriter {
    * @throws HiveException the hive exception
    */
   String getUnderlyingTableName(String table) throws HiveException {
-    Table tbl = Hive.get(this.conf).getTable(table);
+    Table tbl = Hive.get(this.queryConf).getTable(table);
     return tbl == null ? null : tbl.getProperty(LensConfConstants.NATIVE_TABLE_NAME);
   }
 
