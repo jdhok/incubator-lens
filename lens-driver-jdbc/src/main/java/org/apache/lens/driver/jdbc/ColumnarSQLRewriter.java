@@ -45,9 +45,6 @@ import org.antlr.runtime.CommonToken;
  */
 public class ColumnarSQLRewriter implements QueryRewriter {
 
-  /** The conf. */
-  private HiveConf conf;
-
   /** The clause name. */
   private String clauseName = null;
 
@@ -167,7 +164,6 @@ public class ColumnarSQLRewriter implements QueryRewriter {
 
   @Override
   public void init(Configuration conf) {
-    this.conf = new HiveConf(conf, ColumnarSQLRewriter.class);
   }
 
   public String getClause() {
