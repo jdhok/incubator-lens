@@ -153,8 +153,8 @@ public class HiveDriver implements LensDriver {
    * Tell Hive driver that resources have been added for this session
    * @param sessionHandle
    */
-  public void setResourcesAddedForSession(String sessionHandle) {
-    resourcesAddedForSession.put(lensToHiveSession.get(sessionHandle), Boolean.TRUE);
+  public void setResourcesAddedForSession(String sessionHandle, boolean val) {
+    resourcesAddedForSession.put(lensToHiveSession.get(sessionHandle), val);
   }
 
   /**

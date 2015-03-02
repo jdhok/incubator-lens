@@ -2156,8 +2156,10 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
    * @throws LensException
    */
   protected void refreshDriverResources(final QueryContext ctx) throws LensException {
-    refreshDriverResources(ctx.getLensSessionIdentifier(), ctx.getSelectedDriver(),
-      ctx.getQueryHandle().toString());
+    synchronized (ctx.getLensSessionIdentifier()) {
+      refreshDriverResources(ctx.getLensSessionIdentifier(), ctx.getSelectedDriver(),
+        ctx.getQueryHandle().toString());
+    }
   }
 
   /**
@@ -2166,8 +2168,10 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
    * @throws LensException
    */
   protected void refreshDriverResources(final ExplainQueryContext ctx) throws LensException {
-    refreshDriverResources(ctx.getLensSessionIdentifier(), ctx.getSelectedDriver(),
-      ctx.getSelectedDriverQuery());
+    synchronized (ctx.getLensSessionIdentifier()) {
+      refreshDriverResources(ctx.getLensSessionIdentifier(), ctx.getSelectedDriver(),
+        ctx.getSelectedDriverQuery());
+    }
   }
 
   /**
@@ -2176,8 +2180,10 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
    * @throws LensException
    */
   protected void refreshDriverResources(final PreparedQueryContext ctx) throws LensException {
-    refreshDriverResources(ctx.getLensSessionIdentifier(), ctx.getSelectedDriver(),
-      ctx.getPrepareHandle().toString());
+    synchronized (ctx.getLensSessionIdentifier()) {
+      refreshDriverResources(ctx.getLensSessionIdentifier(), ctx.getSelectedDriver(),
+        ctx.getPrepareHandle().toString());
+    }
   }
 
   private void refreshDriverResources(String sessionIdentifier, LensDriver driver, String queryHandle)
@@ -2193,15 +2199,19 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
     final LensSessionHandle sessionHandle = getSessionHandle(sessionIdentifier);
     final LensSessionImpl session = getSession(sessionHandle);
     
-    // Check if session db has changed
+    // Step 1: Check if session db has changed, if yes remove resources from the previos db
     boolean sessionDbChanged = session.databaseChanged();
     if (sessionDbChanged) {
       String prevDb = session.getPreviousDatabase();
-      LOG.info("Refreshing jars as ession database has changed from " + prevDb + " to " + session.getCurrentDatabase());
+      LOG.info("Refreshing jars as session database has changed from "
+        + prevDb + " to " + session.getCurrentDatabase());
 
       Collection<LensSessionImpl.ResourceEntry> prevDbResources = session.getDBResources(prevDb);
       if (prevDbResources != null && !prevDbResources.isEmpty()) {
+        boolean resourcesDeleted = false;
+
         for (LensSessionImpl.ResourceEntry res : prevDbResources) {
+          resourcesDeleted = true;
           String resLocation = res.getLocation();
           if (resLocation.startsWith("file:") && !resLocation.startsWith("file://")) {
             resLocation = "file://" + resLocation.substring("file:".length());
@@ -2214,15 +2224,21 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
             + " from old db " + prevDb);
           } catch (LensException exc) {
             LOG.warn("Error removing resource " + res + " from session " + sessionIdentifier
-            + " for old db " + prevDb, exc);
+              + " for old db " + prevDb, exc);
           }
         }
+
+        if (resourcesDeleted) {
+          hiveDriver.setResourcesAddedForSession(sessionIdentifier, false);
+        }
+
       }
 
+      // Reset db changed so that we don't remove resources again
       session.resetPrevDb();
     }
-    // Add resources if either they haven't been marked as added on the session, or if Hive driver says they need
-    // to be added to the corresponding hive driver
+
+    // Step 2: Add resources for the current database, if haven't been added already
     if (!hiveDriver.areRsourcesAddedForSession(sessionIdentifier)) {
       Collection<LensSessionImpl.ResourceEntry> dbResources = session.getDBResources(session.getCurrentDatabase());
 
@@ -2252,7 +2268,7 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
           + " db= " + session.getCurrentDatabase());
       }
 
-      hiveDriver.setResourcesAddedForSession(sessionIdentifier);
+      hiveDriver.setResourcesAddedForSession(sessionIdentifier, true);
     }
   }
 }

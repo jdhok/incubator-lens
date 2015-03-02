@@ -29,7 +29,7 @@ import org.apache.hadoop.io.Writable;
 /**
  * Simple serde used during test of database jar
  */
-public class DatabaseJarSerde extends AbstractSerDe {
+public class DatabaseJarSerde extends LazySimpleSerde {
   // This should load class from test.jar
   public static final ClassLoaderTestClass testClassInstance = new ClassLoaderTestClass();
   static {

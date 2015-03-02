@@ -49,6 +49,7 @@ import org.apache.lens.server.api.metrics.MetricsService;
 import org.apache.lens.server.api.query.QueryContext;
 import org.apache.lens.server.api.session.SessionService;
 import org.apache.lens.server.session.HiveSessionService;
+import org.apache.lens.server.session.LensSessionImpl;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -1395,17 +1396,13 @@ public class TestQueryService extends LensJerseyTest {
       sessionService.openSession("foo@localhost", "bar", LensTestUtil.DB_WITH_JARS, new HashMap<String, String>());
 
     LOG.info("@@@ Opened session " + sessionHandle.getPublicId() + " with database " + LensTestUtil.DB_WITH_JARS);
+    LensSessionImpl session = sessionService.getSession(sessionHandle);
 
     final String tableInDBWithJars = "testHiveDriverGetsDBJars";
     try {
       // First execute query on the session with db should load jars from DB
-      try {
-        LensTestUtil.createTable(tableInDBWithJars, target(), sessionHandle, "(ID INT, IDSTR STRING) "
+      LensTestUtil.createTable(tableInDBWithJars, target(), sessionHandle, "(ID INT, IDSTR STRING) "
           + "ROW FORMAT SERDE \"DatabaseJarSerde\"");
-      } catch (Throwable exc) {
-        // Above fails because our serde is returning all nulls. We only want to test that serde gets loaded
-        exc.printStackTrace();
-      }
 
       boolean addedToHiveDriver = false;
 
@@ -1414,9 +1411,26 @@ public class TestQueryService extends LensJerseyTest {
           addedToHiveDriver = ((HiveDriver) driver).areRsourcesAddedForSession(sessionHandle.getPublicId().toString());
         }
       }
+      Assert.assertTrue(addedToHiveDriver);
+
+      // Switch database
+      LOG.info("@@@# database switch test");
+      session.setCurrentDatabase(LensTestUtil.DB_WITH_JARS_2);
+      Assert.assertTrue(session.databaseChanged());
+      // Try another query, this should have removed db1 jars from hive driver and replaced with db2 jars
+      LensTestUtil.createTable(tableInDBWithJars + "_2", target(), sessionHandle, "(ID INT, IDSTR STRING) "
+          + "ROW FORMAT SERDE \"DatabaseJarSerde\"");
+
+      Assert.assertFalse(session.databaseChanged());
+
     } finally {
       LOG.info("@@@ TEST_OVER");
-      LensTestUtil.dropTable(tableInDBWithJars, target(), sessionHandle);
+      try {
+        LensTestUtil.dropTable(tableInDBWithJars, target(), sessionHandle);
+        LensTestUtil.dropTable(tableInDBWithJars + "_2", target(), sessionHandle);
+      } catch (Throwable th) {
+        th.printStackTrace();
+      }
       sessionService.closeSession(sessionHandle);
     }
   }
