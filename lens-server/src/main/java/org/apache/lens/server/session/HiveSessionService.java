@@ -209,14 +209,18 @@ public class HiveSessionService extends LensService implements SessionService {
           throw new NotFoundException("Database " + database + " does not exist");
         }
       } catch (Exception e) {
-        try {
-          closeSession(sessionid);
-        } catch (LensException e2) {
-          LOG.error("Error closing session " + sessionid.getPublicId().toString(), e2);
-        }
+        if (!(e instanceof NotFoundException)) {
+          try {
+            closeSession(sessionid);
+          } catch (LensException e2) {
+            LOG.error("Error closing session " + sessionid.getPublicId().toString(), e2);
+          }
 
-        LOG.error("Error in checking if database exists " + database, e);
-        throw new LensException(e);
+          LOG.error("Error in checking if database exists " + database, e);
+          throw new LensException("Error in checking if database exists" + database, e);
+        } else {
+          throw (NotFoundException) e;
+        }
       }
 
       getSession(sessionid).setCurrentDatabase(database);
