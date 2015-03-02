@@ -206,7 +206,7 @@ public class HiveSessionService extends LensService implements SessionService {
       try {
         if (!Hive.get(getSession(sessionid).getHiveConf()).databaseExists(database)) {
           closeSession(sessionid);
-          LOG.info("@@@@ Closed session " + sessionid.getPublicId().toString() + " as db " + database + " does not exist");
+          LOG.info("Closed session " + sessionid.getPublicId().toString() + " as db " + database + " does not exist");
           throw new NotFoundException("Database " + database + " does not exist");
         }
       } catch (HiveException e) {
