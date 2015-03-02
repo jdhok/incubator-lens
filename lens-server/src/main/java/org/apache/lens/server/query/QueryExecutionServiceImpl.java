@@ -462,7 +462,7 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
                   LOG.info("Submitting to already selected driver");
                 }
                 // Check if we need to pass session's effective resources to selected driver
-                maybeAddSessionResourcesToDriver(ctx);
+                refreshDriverResources(ctx);
                 ctx.getSelectedDriver().executeAsync(ctx);
               } catch (Exception e) {
                 LOG.error("Error launching query " + ctx.getQueryHandle(), e);
@@ -1113,7 +1113,7 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
       acquire(sessionHandle);
       PreparedQueryContext prepared = prepareQuery(sessionHandle, query, lensConf, SubmitOp.EXPLAIN_AND_PREPARE);
       prepared.setQueryName(queryName);
-      maybeAddSessionResourcesToDriver(prepared);
+      refreshDriverResources(prepared);
       QueryPlan plan = prepared.getSelectedDriver().explainAndPrepare(prepared).toQueryPlan();
       plan.setPrepareHandle(prepared.getPrepareHandle());
       return plan;
@@ -1799,7 +1799,7 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
       explainQueryContext.setLensSessionIdentifier(sessionHandle.getPublicId().toString());
       accept(query, qconf, SubmitOp.EXPLAIN);
       rewriteAndSelect(explainQueryContext);
-      maybeAddSessionResourcesToDriver(explainQueryContext);
+      refreshDriverResources(explainQueryContext);
       return explainQueryContext.getSelectedDriver().explain(explainQueryContext).toQueryPlan();
     } catch (LensException e) {
       LOG.error("Error during explain :", e);
@@ -2151,36 +2151,36 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
   }
 
   /**
-   * Add session's resources to selected driver if needed
+   * Add session's resources to selected driver if needed and remove resources of previous database
    * @param ctx QueryContext for executinf queries
    * @throws LensException
    */
-  protected void maybeAddSessionResourcesToDriver(final QueryContext ctx) throws LensException {
-    maybeAddSessionResourcesToDriver(ctx.getLensSessionIdentifier(), ctx.getSelectedDriver(),
+  protected void refreshDriverResources(final QueryContext ctx) throws LensException {
+    refreshDriverResources(ctx.getLensSessionIdentifier(), ctx.getSelectedDriver(),
       ctx.getQueryHandle().toString());
   }
 
   /**
-   * Add session's resources to selected driver if needed.
+   * Add session's resources to selected driver if needed and remove resources of previous database
    * @param ctx ExplainQueryContext for explain queries
    * @throws LensException
    */
-  protected void maybeAddSessionResourcesToDriver(final ExplainQueryContext ctx) throws LensException {
-    maybeAddSessionResourcesToDriver(ctx.getLensSessionIdentifier(), ctx.getSelectedDriver(),
+  protected void refreshDriverResources(final ExplainQueryContext ctx) throws LensException {
+    refreshDriverResources(ctx.getLensSessionIdentifier(), ctx.getSelectedDriver(),
       ctx.getSelectedDriverQuery());
   }
 
   /**
-   * Add session's resources to selected driver if needed.
+   * Add session's resources to selected driver if needed and remove resources of previous database
    * @param ctx PreparedQueryContext for explainAndPrepare(Async) queries
    * @throws LensException
    */
-  protected void maybeAddSessionResourcesToDriver(final PreparedQueryContext ctx) throws LensException {
-    maybeAddSessionResourcesToDriver(ctx.getLensSessionIdentifier(), ctx.getSelectedDriver(),
+  protected void refreshDriverResources(final PreparedQueryContext ctx) throws LensException {
+    refreshDriverResources(ctx.getLensSessionIdentifier(), ctx.getSelectedDriver(),
       ctx.getPrepareHandle().toString());
   }
 
-  private void maybeAddSessionResourcesToDriver(String sessionIdentifier, LensDriver driver, String queryHandle)
+  private void refreshDriverResources(String sessionIdentifier, LensDriver driver, String queryHandle)
     throws LensException {
     if (!(driver instanceof HiveDriver) || sessionIdentifier == null || sessionIdentifier.isEmpty()) {
       // Adding resources only required for Hive driver
@@ -2192,11 +2192,39 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
     // Check if jars need to be passed to selected driver
     final LensSessionHandle sessionHandle = getSessionHandle(sessionIdentifier);
     final LensSessionImpl session = getSession(sessionHandle);
+    
+    // Check if session db has changed
+    boolean sessionDbChanged = session.databaseChanged();
+    if (sessionDbChanged) {
+      String prevDb = session.getPreviousDatabase();
+      LOG.info("Refreshing jars as ession database has changed from " + prevDb + " to " + session.getCurrentDatabase());
 
+      Collection<LensSessionImpl.ResourceEntry> prevDbResources = session.getDBResources(prevDb);
+      if (prevDbResources != null && !prevDbResources.isEmpty()) {
+        for (LensSessionImpl.ResourceEntry res : prevDbResources) {
+          String resLocation = res.getLocation();
+          if (resLocation.startsWith("file:") && !resLocation.startsWith("file://")) {
+            resLocation = "file://" + resLocation.substring("file:".length());
+          }
+
+          String removeResourceCmd = "delete " + res.getType().toLowerCase() + " " + resLocation;
+          try {
+            hiveDriver.execute(createResourceQuery(removeResourceCmd, sessionHandle, hiveDriver));
+            LOG.info("Removed resource: " + res + " from session "  + sessionIdentifier
+            + " from old db " + prevDb);
+          } catch (LensException exc) {
+            LOG.warn("Error removing resource " + res + " from session " + sessionIdentifier
+            + " for old db " + prevDb, exc);
+          }
+        }
+      }
+
+      session.resetPrevDb();
+    }
     // Add resources if either they haven't been marked as added on the session, or if Hive driver says they need
     // to be added to the corresponding hive driver
     if (!hiveDriver.areRsourcesAddedForSession(sessionIdentifier)) {
-      Collection<LensSessionImpl.ResourceEntry> dbResources = session.getCurrentDBResources();
+      Collection<LensSessionImpl.ResourceEntry> dbResources = session.getDBResources(session.getCurrentDatabase());
 
       if (dbResources != null && !dbResources.isEmpty()) {
         LOG.info("Proceeding to add resources for DB "

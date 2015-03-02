@@ -37,6 +37,7 @@ import org.apache.lens.server.util.UtilityMethods;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.common.JavaUtils;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hive.service.cli.HiveSQLException;
@@ -68,6 +69,11 @@ public class LensSessionImpl extends HiveSessionImpl {
 
   /** The conf. */
   private Configuration conf = createDefaultConf();
+
+  /**
+   * Previous database name before switching
+   */
+  private String previousDatabase;
 
 
   /**
@@ -260,6 +266,7 @@ public class LensSessionImpl extends HiveSessionImpl {
 
   public void setCurrentDatabase(String currentDatabase) {
     persistInfo.setDatabase(currentDatabase);
+    previousDatabase = getSessionState().getCurrentDatabase();
     getSessionState().setCurrentDatabase(currentDatabase);
     // Merge if resources are added
     synchronized (sessionDbClassLoaders) {
@@ -318,6 +325,15 @@ public class LensSessionImpl extends HiveSessionImpl {
     return getSessionState().getCurrentDatabase();
   }
 
+
+  public String getPreviousDatabase() {
+    return previousDatabase;
+  }
+
+  public boolean databaseChanged() {
+    return !getSessionState().getCurrentDatabase().equals(previousDatabase);
+  }
+
   /*
    * (non-Javadoc)
    *
@@ -352,8 +368,8 @@ public class LensSessionImpl extends HiveSessionImpl {
    * Return resources which are added statically to the current database
    * @return
    */
-  public Collection<ResourceEntry> getCurrentDBResources() {
-    return getDbResService().getResourcesForDatabase(getCurrentDatabase());
+  public Collection<ResourceEntry> getDBResources(String database) {
+    return getDbResService().getResourcesForDatabase(database);
   }
 
   /**
@@ -362,6 +378,28 @@ public class LensSessionImpl extends HiveSessionImpl {
    */
   public ClassLoader getClassLoader() {
     return getClassLoader(getCurrentDatabase());
+  }
+
+  public void resetPrevDb() {
+    previousDatabase = getSessionState().getCurrentDatabase();
+  }
+
+  @Override
+  public void close() throws HiveSQLException {
+    super.close();
+
+    // Release class loader resources
+    synchronized (sessionDbClassLoaders) {
+      for (ClassLoader classLoader : sessionDbClassLoaders.values()) {
+        try {
+          // This is a utility in hive-common
+          JavaUtils.closeClassLoader(classLoader);
+        } catch (IOException e) {
+          LOG.error("Error closing session classloader for session: " + getSessionHandle().getSessionId(), e);
+        }
+      }
+      sessionDbClassLoaders.clear();
+    }
   }
 
   /**
