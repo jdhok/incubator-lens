@@ -326,10 +326,17 @@ public class LensSessionImpl extends HiveSessionImpl {
   }
 
 
+  /**
+   * @return returns the previous database name
+   */
   public String getPreviousDatabase() {
     return previousDatabase;
   }
 
+  /**
+   * Returns true if database has changed recently
+   * @return
+   */
   public boolean databaseChanged() {
     return !getSessionState().getCurrentDatabase().equals(previousDatabase);
   }
@@ -380,6 +387,9 @@ public class LensSessionImpl extends HiveSessionImpl {
     return getClassLoader(getCurrentDatabase());
   }
 
+  /**
+   * Reset previous database with the current database
+   */
   public void resetPrevDb() {
     previousDatabase = getSessionState().getCurrentDatabase();
   }

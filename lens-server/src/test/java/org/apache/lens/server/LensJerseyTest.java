@@ -35,7 +35,6 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hive.service.Service;
 import org.apache.hive.service.Service.STATE;
-import org.apache.hive.service.server.HiveServer2;
 
 import org.glassfish.jersey.test.JerseyTest;
 import org.testng.annotations.AfterSuite;
@@ -49,7 +48,6 @@ public abstract class LensJerseyTest extends JerseyTest {
   public static final Log LOG = LogFactory.getLog(LensJerseyTest.class);
 
   private int port = -1;
-  private HiveServer2 hiveServer;
 
   protected URI getUri() {
     return UriBuilder.fromUri("http://localhost/").port(getTestPort()).build();
@@ -110,7 +108,7 @@ public abstract class LensJerseyTest extends JerseyTest {
   @BeforeSuite
   public void startAll() throws Exception {
     LOG.info("Before suite");
-    hiveServer = TestRemoteHiveDriver.createHS2Service();
+    TestRemoteHiveDriver.createHS2Service();
     System.out.println("Remote hive server started!");
     HiveConf hiveConf = new HiveConf();
     hiveConf.setIntVar(HiveConf.ConfVars.HIVE_SERVER2_ASYNC_EXEC_THREADS, 5);
@@ -128,10 +126,6 @@ public abstract class LensJerseyTest extends JerseyTest {
     assertTrue(mockSvc instanceof MockNonLensService, mockSvc.getClass().getName());
     assertEquals(mockSvc.getServiceState(), STATE.STARTED);
     System.out.println("Lens services started!");
-  }
-
-  public HiveServer2 getHiveServer() {
-    return hiveServer;
   }
 
   /**

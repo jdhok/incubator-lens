@@ -2198,7 +2198,7 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
     // Check if jars need to be passed to selected driver
     final LensSessionHandle sessionHandle = getSessionHandle(sessionIdentifier);
     final LensSessionImpl session = getSession(sessionHandle);
-    
+
     // Step 1: Check if session db has changed, if yes remove resources from the previos db
     boolean sessionDbChanged = session.databaseChanged();
     if (sessionDbChanged) {
@@ -2220,8 +2220,7 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
           String removeResourceCmd = "delete " + res.getType().toLowerCase() + " " + resLocation;
           try {
             hiveDriver.execute(createResourceQuery(removeResourceCmd, sessionHandle, hiveDriver));
-            LOG.info("Removed resource: " + res + " from session "  + sessionIdentifier
-            + " from old db " + prevDb);
+            LOG.info("Removed resource: " + res + " from session "  + sessionIdentifier + " from old db " + prevDb);
           } catch (LensException exc) {
             LOG.warn("Error removing resource " + res + " from session " + sessionIdentifier
               + " for old db " + prevDb, exc);

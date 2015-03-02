@@ -84,7 +84,7 @@ public class TestRemoteHiveDriver extends TestHiveDriver {
    *
    * @throws Exception the exception
    */
-  public static HiveServer2 createHS2Service() throws Exception {
+  public static void createHS2Service() throws Exception {
     remoteConf.setClass(HiveDriver.HIVE_CONNECTION_CLASS, RemoteThriftConnection.class, ThriftConnection.class);
     remoteConf.set("hive.lock.manager", "org.apache.hadoop.hive.ql.lockmgr.EmbeddedLockManager");
     remoteConf.setVar(HiveConf.ConfVars.HIVE_SERVER2_THRIFT_BIND_HOST, HS2_HOST);
@@ -100,7 +100,6 @@ public class TestRemoteHiveDriver extends TestHiveDriver {
     server.start();
     // TODO figure out a better way to wait for thrift service to start
     Thread.sleep(7000);
-    return server;
   }
 
   /**

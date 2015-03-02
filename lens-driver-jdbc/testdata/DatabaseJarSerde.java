@@ -17,15 +17,8 @@
  * under the License.
  */
 
-import java.util.Properties;
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hive.serde2.AbstractSerDe;
 import org.apache.hadoop.hive.serde2.SerDeException;
-import org.apache.hadoop.hive.serde2.SerDeStats;
 import org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe;
-import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
-import org.apache.hadoop.io.Writable;
 
 /**
  * Simple serde used during test of database jar
@@ -35,5 +28,9 @@ public class DatabaseJarSerde extends LazySimpleSerDe {
   public static final ClassLoaderTestClass testClassInstance = new ClassLoaderTestClass();
   static {
     System.out.println("@@@@ SUCCESSFULLY_LOADED CLASS " + DatabaseJarSerde.class);
+  }
+
+  public DatabaseJarSerde() throws SerDeException {
+    super();
   }
 }

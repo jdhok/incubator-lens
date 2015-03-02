@@ -127,8 +127,6 @@ public class HiveDriver implements LensDriver {
   private Map<String, SessionHandle> lensToHiveSession;
   /** Keep track of resources added to the Hive session */
   private Map<SessionHandle, Boolean> resourcesAddedForSession;
-  /** Keep track of current database for a Lens session */
-  private Map<String, String> lensSessionDbMap;
 
   /** The driver listeners. */
   private List<LensEventListener<DriverEvent>> driverListeners;
