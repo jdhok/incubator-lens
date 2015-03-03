@@ -19,7 +19,6 @@
 package org.apache.lens.client;
 
 import java.net.URI;
-import java.util.List;
 
 import javax.ws.rs.core.UriBuilder;
 
