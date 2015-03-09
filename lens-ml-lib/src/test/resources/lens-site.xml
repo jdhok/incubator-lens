@@ -159,5 +159,12 @@
     <description>Implementation class for session service</description>
   </property>
 
+  <property>
+    <name>lens.server.db.validation.query</name>
+    <value>select 1 from INFORMATION_SCHEMA.SYSTEM_USERS</value>
+    <description>Validation query for hsql
+    </description>
+  </property>
+
 
 </configuration>
