@@ -35,6 +35,10 @@
     <value>SA</value>
   </property>
   <property>
+    <name>lens.driver.jdbc.db.password</name>
+    <value>bar</value>
+  </property>
+  <property>
     <name>lens.cube.query.driver.supported.storages</name>
     <value>mydb</value>
     <final>true</final>
