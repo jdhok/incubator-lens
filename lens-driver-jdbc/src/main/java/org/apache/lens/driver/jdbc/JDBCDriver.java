@@ -672,7 +672,13 @@ public class JDBCDriver implements LensDriver {
       tmpConf.set(JDBC_DB_URI, getKeyOrFallBack(tmpConf, getEstimateKey(JDBC_DB_URI), JDBC_DB_URI));
       tmpConf.set(JDBC_DRIVER_CLASS, getKeyOrFallBack(tmpConf, getEstimateKey(JDBC_DRIVER_CLASS), JDBC_DRIVER_CLASS));
       tmpConf.set(JDBC_USER, getKeyOrFallBack(tmpConf, getEstimateKey(JDBC_USER), JDBC_USER));
-      tmpConf.set(JDBC_PASSWORD, getKeyOrFallBack(tmpConf, getEstimateKey(JDBC_PASSWORD), JDBC_PASSWORD));
+
+      String password = getKeyOrFallBack(tmpConf, getEstimateKey(JDBC_PASSWORD), JDBC_PASSWORD);
+      /* We need to set password as empty string if it is not provided. Setting null on conf is not allowed */
+      if (password == null) {
+        password = "";
+      }
+      tmpConf.set(JDBC_PASSWORD, password);
 
       tmpConf.set(JDBC_POOL_MAX_SIZE, getKeyOrFallBack(tmpConf, getEstimateKey(JDBC_POOL_MAX_SIZE),
         JDBC_POOL_MAX_SIZE));
