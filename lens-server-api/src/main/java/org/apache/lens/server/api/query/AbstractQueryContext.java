@@ -352,4 +352,9 @@ public abstract class AbstractQueryContext implements Serializable {
   public void setFinalDriverQuery(LensDriver driver, String rewrittenQuery) {
     driverContext.driverQueryContextMap.get(driver).setFinalDriverQuery(rewrittenQuery);
   }
+
+  public void setDriverQuery(LensDriver driver, String query) {
+    driverContext.setDriverQuery(driver, query);
+    isDriverQueryExplicitlySet = true;
+  }
 }

@@ -313,6 +313,7 @@ public final class RewriteUtil {
 
         rewrittenQuery = builder.toString();
         succeeded = true;
+        ctx.setDriverQuery(driver, rewrittenQuery);
         LOG.info("Final rewritten query for driver:" + driver + " is: " + rewrittenQuery);
       } catch (Exception e) {
         // we are catching all exceptions sothat other drivers can be picked in case of driver bugs
