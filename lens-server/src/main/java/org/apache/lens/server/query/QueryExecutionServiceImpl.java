@@ -958,14 +958,21 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
   private void rewriteAndSelect(AbstractQueryContext ctx) throws LensException {
     MethodMetricsContext rewriteGauge = MethodMetricsFactory.createMethodGauge(ctx.getConf(), false,
       ALL_REWRITES_GAUGE);
-    ctx.setDriverQueries(RewriteUtil.rewriteQuery(ctx));
+
+    // Rewrite runnables
+    Map<LensDriver, RewriteUtil.DriverRewriterRunnable> rewriteRunnables =
+      RewriteUtil.rewriteQuery(ctx);
+
+    // TODO Set driver queries properly from result of each rewrite runnable
+    ctx.setDriverQueries(null);
     rewriteGauge.markSuccess();
 
     MethodMetricsContext estimateGauge = MethodMetricsFactory.createMethodGauge(ctx.getConf(), false,
       ALL_DRIVERS_ESTIMATE_GAUGE);
-    Map<LensDriver, AbstractQueryContext.DriverEstimateRunnable> estimateRunnableMap = ctx.estimateCostForDrivers();
+    // Estimate runnables
+    Map<LensDriver, AbstractQueryContext.DriverEstimateRunnable> estimateRunnableMap =
+      ctx.estimateCostForDrivers();
     estimateGauge.markSuccess();
-
     MethodMetricsContext selectGauge = MethodMetricsFactory.createMethodGauge(ctx.getConf(), false,
       DRIVER_SELECTOR_GAUGE);
     // 2. select driver to run the query
