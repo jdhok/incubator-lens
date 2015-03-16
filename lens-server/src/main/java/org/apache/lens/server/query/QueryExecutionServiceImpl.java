@@ -960,9 +960,10 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
       ALL_REWRITES_GAUGE);
     ctx.setDriverQueries(RewriteUtil.rewriteQuery(ctx));
     rewriteGauge.markSuccess();
+
     MethodMetricsContext estimateGauge = MethodMetricsFactory.createMethodGauge(ctx.getConf(), false,
       ALL_DRIVERS_ESTIMATE_GAUGE);
-    ctx.estimateCostForDrivers();
+    Map<LensDriver, AbstractQueryContext.DriverEstimateRunnable> estimateRunnableMap = ctx.estimateCostForDrivers();
     estimateGauge.markSuccess();
 
     MethodMetricsContext selectGauge = MethodMetricsFactory.createMethodGauge(ctx.getConf(), false,
