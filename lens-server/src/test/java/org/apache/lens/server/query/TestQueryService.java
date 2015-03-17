@@ -1540,6 +1540,8 @@ public class TestQueryService extends LensJerseyTest {
     Assert.assertTrue(reg.getGauges().keySet().containsAll(Arrays.asList(
       "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-ALL_CUBE_REWRITES",
       "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-ALL_DRIVER_ESTIMATES",
-      "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-DRIVER_SELECTION")));
+      "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-DRIVER_SELECTION")),
+      reg.getGauges().keySet().toString()
+      );
   }
 }

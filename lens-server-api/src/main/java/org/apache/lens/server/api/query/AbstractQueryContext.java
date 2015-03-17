@@ -204,7 +204,6 @@ public abstract class AbstractQueryContext implements Serializable {
         driverQueryContext.setDriverCost(driver.estimate(queryContext));
         succeeded = true;
       } catch (Exception e) {
-        LOG.error("Setting driver cost failed for driver " + driver, e);
         String expMsg = LensUtil.getCauseMessage(e);
         driverQueryContext.setDriverQueryCostEstimateError(e);
         failureCause = new StringBuilder("Driver :")
@@ -212,6 +211,7 @@ public abstract class AbstractQueryContext implements Serializable {
             .append(" Cause :")
             .append(expMsg)
             .toString();
+        LOG.error("Setting driver cost failed for driver " + driver + " Cause: " + failureCause, e);
       } finally {
         estimateGauge.markSuccess();
       }

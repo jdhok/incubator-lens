@@ -1015,11 +1015,9 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
 
     for (RewriteEstimateRunnable r : runnables) {
       if (r.isSucceeded()) {
-        System.out.println("@@@@@@@@ E_SUCCESS @@@@@@@@@@ " + r.getDriver());
         succeededOnce = true;
       } else {
         failureCauses.add(r.getFailureCause());
-        System.out.println("@@@@@@@@ E_FAILED @@@@@@@@@@ " + r.getDriver() + " CAUSE=" + r.getFailureCause());
       }
     }
 
@@ -1073,9 +1071,7 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
     @Override
     public void run() {
       try {
-        LOG.info("####-- REWRITE_ESTIMATE_RUNNABLE " + driver);
         acquire(ctx.getLensSessionIdentifier());
-        LOG.info("--- ACQUIRED " + ctx.getLensSessionIdentifier() + " driver " + driver);
         MethodMetricsContext rewriteGauge = MethodMetricsFactory.createMethodGauge(ctx.getConf(), false,
           ALL_REWRITES_GAUGE);
         // 1. Rewrite for driver
@@ -1084,7 +1080,6 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
         } catch (Throwable th) {
           th.printStackTrace();
         }
-        LOG.info("#### REWRITE COMPLETE " + driver);
         succeeded = rewriterRunnable.isSucceeded();
         failureCause = rewriterRunnable.getFailureCause();
 
@@ -1096,22 +1091,17 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
             ALL_DRIVERS_ESTIMATE_GAUGE);
 
           estimateRunnable.run();
-          System.out.println("#### ESTIMATE COMPLETE " + driver);
           succeeded = estimateRunnable.isSucceeded();
-          failureCause = rewriterRunnable.getFailureCause();
+          failureCause = estimateRunnable.getFailureCause();
 
           if (!succeeded) {
             LOG.error("Estimate failed for driver " + driver + " cause: " + failureCause);
-            LOG.info("#### ESTIMATE FAILED " + driver);
-          } else {
-            LOG.info("#### ESTIMATE_SUCCESS");
           }
           estimateGauge.markSuccess();
         } else {
           LOG.error("Estimate skipped since rewrite failed for driver " + driver + " cause: " + failureCause);
         }
       } catch (Throwable th) {
-        th.printStackTrace();
         LOG.error("Error computing estimate for driver " + driver, th);
       } finally {
         completed = true;
@@ -1933,7 +1923,7 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
       Configuration qconf = getLensConf(sessionHandle, lensConf);
       ExplainQueryContext estimateQueryContext = new ExplainQueryContext(query,
         getSession(sessionHandle).getLoggedInUser(), lensConf, qconf, drivers.values());
-
+      estimateQueryContext.setLensSessionIdentifier(sessionHandle.getPublicId().toString());
       accept(query, qconf, SubmitOp.ESTIMATE);
       rewriteAndSelect(estimateQueryContext);
       return new EstimateResult(estimateQueryContext.getSelectedDriverQueryCost());
