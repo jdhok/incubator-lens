@@ -153,7 +153,8 @@ public class TestRewriting {
 
       // Failure cause should be set only when rewrite fails
       if (r.isSucceeded()) {
-        Assert.assertNull(r.getFailureCause(), driver  + " succeeded but failure cause is set to " + r.getFailureCause());
+        Assert.assertNull(r.getFailureCause(), driver
+          + " succeeded but failure cause is set to " + r.getFailureCause());
       } else {
         Assert.assertNotNull(r.getFailureCause(), driver + " failed but failure cause is not set");
       }
