@@ -310,18 +310,12 @@ public final class RewriteUtil {
 
         rewrittenQuery = builder.toString();
         succeeded = true;
-        synchronized (ctx) {
-          ctx.setDriverQuery(driver, rewrittenQuery);
-        }
+        ctx.setDriverQuery(driver, rewrittenQuery);
         LOG.info("Final rewritten query for driver:" + driver + " is: " + rewrittenQuery);
       } catch (Exception e) {
         // we are catching all exceptions sothat other drivers can be picked in case of driver bugs
         LOG.warn("Driver : " + driver + " Skipped for the query rewriting due to ", e);
-
-        synchronized (ctx) {
-          ctx.setDriverRewriteError(driver, e);
-        }
-
+        ctx.setDriverRewriteError(driver, e);
         failureCause = new StringBuilder(" Driver :")
           .append(driver.getClass().getName())
           .append(" Cause :" + e.getLocalizedMessage())

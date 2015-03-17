@@ -32,12 +32,10 @@ import org.apache.lens.server.api.metrics.MethodMetricsFactory;
 import org.apache.lens.server.api.query.DriverSelectorQueryContext.DriverQueryContext;
 import org.apache.lens.server.api.util.LensUtil;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -141,8 +139,20 @@ public abstract class AbstractQueryContext implements Serializable {
    * Estimate cost for each driver and set in context
    *
    * @throws LensException
+   *
    */
-  public Map<LensDriver, DriverEstimateRunnable> estimateCostForDrivers() throws LensException {
+  public void estimateCostForDrivers() throws LensException {
+    Map<LensDriver, DriverEstimateRunnable> estimateRunnables = getDriverEstimateRunnables();
+    for (LensDriver driver : estimateRunnables.keySet()) {
+      LOG.info("Running estimate for driver " + driver);
+      estimateRunnables.get(driver).run();
+    }
+  }
+
+  /**
+   * Get runnables wrapping estimate computation, which coule be processed offline
+   */
+  public Map<LensDriver, DriverEstimateRunnable> getDriverEstimateRunnables() throws LensException {
     Map<LensDriver, DriverEstimateRunnable> estimateRunnables = new HashMap<LensDriver, DriverEstimateRunnable>();
 
     for (LensDriver driver : driverContext.getDrivers()) {
@@ -355,7 +365,7 @@ public abstract class AbstractQueryContext implements Serializable {
     driverContext.driverQueryContextMap.get(driver).setFinalDriverQuery(rewrittenQuery);
   }
 
-  public synchronized void setDriverQuery(LensDriver driver, String query) {
+  public void setDriverQuery(LensDriver driver, String query) {
     driverContext.setDriverQuery(driver, query);
     isDriverQueryExplicitlySet = true;
   }

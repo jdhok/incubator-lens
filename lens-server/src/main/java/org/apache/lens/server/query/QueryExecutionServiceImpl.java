@@ -962,7 +962,8 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
   private static final String DRIVER_SELECTOR_GAUGE = "DRIVER_SELECTION";
 
   /**
-   * Rewrite and select.
+   * Rewrite the query for each driver, and estimate query cost for the rewritten queries.
+   * Finally, select the driver using driver selector.
    *
    * @param ctx query context
    * @throws LensException the lens exception
@@ -972,7 +973,7 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
     // These are mapped against the driver, so that later it becomes easy to chain them
     // for each driver.
     Map<LensDriver, RewriteUtil.DriverRewriterRunnable> rewriteRunnables = RewriteUtil.rewriteQuery(ctx);
-    Map<LensDriver, AbstractQueryContext.DriverEstimateRunnable> estimateRunnables = ctx.estimateCostForDrivers();
+    Map<LensDriver, AbstractQueryContext.DriverEstimateRunnable> estimateRunnables = ctx.getDriverEstimateRunnables();
 
     int numDrivers = ctx.getDriverContext().getDrivers().size();
     final CountDownLatch estimateCompletionLatch = new CountDownLatch(numDrivers);
@@ -992,15 +993,19 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
     // Wait for all rewrite and estimates to finish
     try {
       // TODO timeout value should be obtained from server conf
-      estimateCompletionLatch.await(10000, TimeUnit.MILLISECONDS);
-    } catch (InterruptedException exc) {
+      boolean completed = estimateCompletionLatch.await(120000, TimeUnit.MILLISECONDS);
       // log operations yet to complete
-      for (RewriteEstimateRunnable r : runnables) {
-        if (!r.isCompleted()) {
-          LOG.warn("Rewrite and estimate not complete for " + r.getDriver().getClass().getSimpleName());
+      if (!completed) {
+        int inCompleteCount = 0;
+        for (RewriteEstimateRunnable r : runnables) {
+          if (!r.isCompleted()) {
+            inCompleteCount++;
+            LOG.warn("Rewrite and estimate not complete for " + r.getDriver().getClass().getSimpleName());
+          }
         }
+        throw new LensException(inCompleteCount + " drivers could not complete estimate call in given time");
       }
-
+    } catch (InterruptedException exc) {
       throw new LensException("At least one of the estimate operation failed to complete in time", exc);
     }
 
@@ -1009,10 +1014,13 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
     List<String> failureCauses = new ArrayList<String>(numDrivers);
 
     for (RewriteEstimateRunnable r : runnables) {
-      if (!succeededOnce) {
-        succeededOnce = r.isSucceeded();
+      if (r.isSucceeded()) {
+        System.out.println("@@@@@@@@ E_SUCCESS @@@@@@@@@@ " + r.getDriver());
+        succeededOnce = true;
+      } else {
+        failureCauses.add(r.getFailureCause());
+        System.out.println("@@@@@@@@ E_FAILED @@@@@@@@@@ " + r.getDriver() + " CAUSE=" + r.getFailureCause());
       }
-      failureCauses.add(r.getFailureCause());
     }
 
     // Throw exception if none of the rewrite+estimates are successful.
@@ -1033,7 +1041,7 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
    * Chains driver specific rewrite and estimate of the query in a single runnable, which can be
    * processed in a background thread
    */
-  public static class RewriteEstimateRunnable implements Runnable {
+  public class RewriteEstimateRunnable implements Runnable {
     @Getter
     private final LensDriver driver;
     private final RewriteUtil.DriverRewriterRunnable rewriterRunnable;
@@ -1065,10 +1073,18 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
     @Override
     public void run() {
       try {
+        LOG.info("####-- REWRITE_ESTIMATE_RUNNABLE " + driver);
+        acquire(ctx.getLensSessionIdentifier());
+        LOG.info("--- ACQUIRED " + ctx.getLensSessionIdentifier() + " driver " + driver);
         MethodMetricsContext rewriteGauge = MethodMetricsFactory.createMethodGauge(ctx.getConf(), false,
           ALL_REWRITES_GAUGE);
         // 1. Rewrite for driver
-        rewriterRunnable.run();
+        try {
+          rewriterRunnable.run();
+        } catch (Throwable th) {
+          th.printStackTrace();
+        }
+        LOG.info("#### REWRITE COMPLETE " + driver);
         succeeded = rewriterRunnable.isSucceeded();
         failureCause = rewriterRunnable.getFailureCause();
 
@@ -1080,14 +1096,32 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
             ALL_DRIVERS_ESTIMATE_GAUGE);
 
           estimateRunnable.run();
+          System.out.println("#### ESTIMATE COMPLETE " + driver);
           succeeded = estimateRunnable.isSucceeded();
           failureCause = rewriterRunnable.getFailureCause();
 
+          if (!succeeded) {
+            LOG.error("Estimate failed for driver " + driver + " cause: " + failureCause);
+            LOG.info("#### ESTIMATE FAILED " + driver);
+          } else {
+            LOG.info("#### ESTIMATE_SUCCESS");
+          }
           estimateGauge.markSuccess();
+        } else {
+          LOG.error("Estimate skipped since rewrite failed for driver " + driver + " cause: " + failureCause);
         }
+      } catch (Throwable th) {
+        th.printStackTrace();
+        LOG.error("Error computing estimate for driver " + driver, th);
       } finally {
         completed = true;
-        estimateCompletionLatch.countDown();
+        try {
+          release(ctx.getLensSessionIdentifier());
+        } catch (LensException e) {
+          LOG.error("Could not release session: " + ctx.getLensSessionIdentifier(), e);
+        } finally {
+          estimateCompletionLatch.countDown();
+        }
       }
     }
   }

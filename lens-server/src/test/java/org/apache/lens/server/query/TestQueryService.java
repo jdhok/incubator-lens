@@ -47,6 +47,7 @@ import org.apache.lens.server.api.LensConfConstants;
 import org.apache.lens.server.api.driver.LensDriver;
 import org.apache.lens.server.api.metrics.LensMetricsRegistry;
 import org.apache.lens.server.api.metrics.MetricsService;
+import org.apache.lens.server.api.query.AbstractQueryContext;
 import org.apache.lens.server.api.query.QueryContext;
 import org.apache.lens.server.api.session.SessionService;
 import org.apache.lens.server.session.HiveSessionService;
@@ -1488,12 +1489,14 @@ public class TestQueryService extends LensJerseyTest {
     for (LensDriver driver : queryService.getDrivers()) {
       ctx.setDriverRewriteError(driver, new LensException());
     }
-    try {
-      ctx.estimateCostForDrivers();
-      Assert.fail("estimate should have failed");
-    } catch (LensException e) {
-      // expected
+
+    // All estimates should be skipped.
+    Map<LensDriver, AbstractQueryContext.DriverEstimateRunnable> estimateRunnables = ctx.getDriverEstimateRunnables();
+    for (LensDriver driver : estimateRunnables.keySet()) {
+      estimateRunnables.get(driver).run();
+      Assert.assertFalse(estimateRunnables.get(driver).isSucceeded(), driver + " estimate should have been skipped");
     }
+
     for (LensDriver driver : queryService.getDrivers()) {
       Assert.assertNull(ctx.getDriverQueryCost(driver));
     }
