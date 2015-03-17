@@ -173,7 +173,9 @@ public abstract class AbstractQueryContext implements Serializable {
     private boolean succeeded = false;
 
 
-    public DriverEstimateRunnable(AbstractQueryContext queryContext, DriverQueryContext driverQueryContext, LensDriver driver) {
+    public DriverEstimateRunnable(AbstractQueryContext queryContext,
+                                  DriverQueryContext driverQueryContext,
+                                  LensDriver driver) {
       this.queryContext = queryContext;
       this.driverQueryContext = driverQueryContext;
       this.driver = driver;
@@ -353,7 +355,7 @@ public abstract class AbstractQueryContext implements Serializable {
     driverContext.driverQueryContextMap.get(driver).setFinalDriverQuery(rewrittenQuery);
   }
 
-  public void setDriverQuery(LensDriver driver, String query) {
+  public synchronized void setDriverQuery(LensDriver driver, String query) {
     driverContext.setDriverQuery(driver, query);
     isDriverQueryExplicitlySet = true;
   }

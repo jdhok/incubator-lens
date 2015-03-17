@@ -18,10 +18,7 @@
  */
 package org.apache.lens.driver.cube;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -218,7 +215,7 @@ public final class RewriteUtil {
   public static Map<LensDriver, DriverRewriterRunnable> rewriteQuery(AbstractQueryContext ctx) throws LensException {
     try {
       String replacedQuery = getReplacedQuery(ctx.getUserQuery());
-      Map<LensDriver, DriverRewriterRunnable> runnables = new HashMap<LensDriver, DriverRewriterRunnable>();
+      Map<LensDriver, DriverRewriterRunnable> runnables = new LinkedHashMap<LensDriver, DriverRewriterRunnable>();
       List<RewriteUtil.CubeQueryInfo> cubeQueries = findCubePositions(replacedQuery);
 
       for (LensDriver driver : ctx.getDriverContext().getDrivers()) {
@@ -232,6 +229,7 @@ public final class RewriteUtil {
   }
 
   public static class DriverRewriterRunnable implements Runnable {
+    @Getter
     private final LensDriver driver;
     private final AbstractQueryContext ctx;
     private final List<CubeQueryInfo> cubeQueries;
@@ -239,7 +237,7 @@ public final class RewriteUtil {
 
     @Getter
     /** Indicate if rewrite operation succeeded */
-    private boolean succeeded = false;
+    private boolean succeeded;
 
     @Getter
     /** Get cause of rewrite failure if rewrite operation failed */
@@ -264,11 +262,11 @@ public final class RewriteUtil {
       String lowerCaseQuery = replacedQuery.toLowerCase();
       if (lowerCaseQuery.startsWith("add") || lowerCaseQuery.startsWith("set")) {
         rewrittenQuery = replacedQuery;
+        return;
       }
 
       MethodMetricsContext rewriteGauge = MethodMetricsFactory.createMethodGauge(ctx.getDriverConf(driver), true,
         REWRITE_QUERY_GAUGE);
-
       StringBuilder builder = new StringBuilder();
       int start = 0;
 
@@ -294,7 +292,6 @@ public final class RewriteUtil {
 
           // Parse and rewrite individual cube query
           CubeQueryContext cqc = rewriter.rewrite(cqi.query);
-
           MethodMetricsContext toHQLGauge = MethodMetricsFactory.createMethodGauge(ctx.getDriverConf(driver), true,
             TOHQL_GAUGE);
           // toHQL actually generates the rewritten query
@@ -313,13 +310,18 @@ public final class RewriteUtil {
 
         rewrittenQuery = builder.toString();
         succeeded = true;
-        ctx.setDriverQuery(driver, rewrittenQuery);
+        synchronized (ctx) {
+          ctx.setDriverQuery(driver, rewrittenQuery);
+        }
         LOG.info("Final rewritten query for driver:" + driver + " is: " + rewrittenQuery);
       } catch (Exception e) {
         // we are catching all exceptions sothat other drivers can be picked in case of driver bugs
-        LOG.warn("Driver : " + driver.getClass().getName() + " Skipped for the query rewriting due to ", e);
+        LOG.warn("Driver : " + driver + " Skipped for the query rewriting due to ", e);
 
-        ctx.setDriverRewriteError(driver, e);
+        synchronized (ctx) {
+          ctx.setDriverRewriteError(driver, e);
+        }
+
         failureCause = new StringBuilder(" Driver :")
           .append(driver.getClass().getName())
           .append(" Cause :" + e.getLocalizedMessage())
@@ -327,6 +329,11 @@ public final class RewriteUtil {
       } finally {
         rewriteGauge.markSuccess();
       }
+    }
+
+    @Override
+    public String toString() {
+      return "Rewrite runnable for " + driver;
     }
   }
 

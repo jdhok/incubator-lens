@@ -968,7 +968,7 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
    * @throws LensException the lens exception
    */
   private void rewriteAndSelect(final AbstractQueryContext ctx) throws LensException {
-    // Initially we obtain individual runnables for rewrite and estimate
+    // Initially we obtain individual runnables for rewrite and estimate calls
     // These are mapped against the driver, so that later it becomes easy to chain them
     // for each driver.
     Map<LensDriver, RewriteUtil.DriverRewriterRunnable> rewriteRunnables = RewriteUtil.rewriteQuery(ctx);
