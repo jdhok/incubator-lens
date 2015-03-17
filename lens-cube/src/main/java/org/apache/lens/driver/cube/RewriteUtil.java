@@ -32,6 +32,7 @@ import org.apache.lens.server.api.metrics.MethodMetricsFactory;
 import org.apache.lens.server.api.query.AbstractQueryContext;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.parse.ASTNode;
 import org.apache.hadoop.hive.ql.parse.HiveParser;
 import org.apache.hadoop.hive.ql.parse.ParseException;
@@ -82,8 +83,8 @@ public final class RewriteUtil {
    * @throws SemanticException the semantic exception
    * @throws ParseException    the parse exception
    */
-  static List<CubeQueryInfo> findCubePositions(String query) throws SemanticException, ParseException {
-    ASTNode ast = HQLParser.parseHQL(query);
+  static List<CubeQueryInfo> findCubePositions(String query, HiveConf conf) throws SemanticException, ParseException {
+    ASTNode ast = HQLParser.parseHQL(query, conf);
     LOG.debug("User query AST:" + ast.dump());
     List<CubeQueryInfo> cubeQueries = new ArrayList<CubeQueryInfo>();
     findCubePositions(ast, cubeQueries, query);
@@ -187,8 +188,8 @@ public final class RewriteUtil {
    * @return the rewriter
    * @throws SemanticException the semantic exception
    */
-  static CubeQueryRewriter getCubeRewriter(Configuration queryConf) throws SemanticException {
-    return new CubeQueryRewriter(queryConf);
+  static CubeQueryRewriter getCubeRewriter(Configuration queryConf, HiveConf hconf) throws SemanticException {
+    return new CubeQueryRewriter(queryConf, hconf);
   }
 
   /**
@@ -216,7 +217,7 @@ public final class RewriteUtil {
     try {
       String replacedQuery = getReplacedQuery(ctx.getUserQuery());
       Map<LensDriver, DriverRewriterRunnable> runnables = new LinkedHashMap<LensDriver, DriverRewriterRunnable>();
-      List<RewriteUtil.CubeQueryInfo> cubeQueries = findCubePositions(replacedQuery);
+      List<RewriteUtil.CubeQueryInfo> cubeQueries = findCubePositions(replacedQuery, ctx.getHiveConf());
 
       for (LensDriver driver : ctx.getDriverContext().getDrivers()) {
         runnables.put(driver, new DriverRewriterRunnable(driver, ctx, cubeQueries, replacedQuery));
@@ -275,7 +276,7 @@ public final class RewriteUtil {
 
         if (cubeQueries.size() > 0) {
           // avoid creating rewriter if there are no cube queries
-          rewriter = getCubeRewriter(ctx.getDriverContext().getDriverConf(driver));
+          rewriter = getCubeRewriter(ctx.getDriverContext().getDriverConf(driver), ctx.getHiveConf());
           ctx.setOlapQuery(true);
         }
 
