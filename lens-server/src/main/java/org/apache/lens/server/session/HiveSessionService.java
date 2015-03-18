@@ -50,6 +50,7 @@ import org.apache.hadoop.hive.ql.processors.SetProcessor;
 import org.apache.hadoop.hive.ql.session.SessionState;
 import org.apache.hive.service.cli.CLIService;
 import org.apache.hive.service.cli.HiveSQLException;
+import org.apache.hive.service.cli.OperationHandle;
 
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -301,7 +302,19 @@ public class HiveSessionService extends LensService implements SessionService {
       }
       getSession(sessionid).getSessionConf().set(var, value);
       // set in underlying cli session
-      getCliService().executeStatement(getHiveSessionHandle(sessionid), command, null);
+      OperationHandle op = null;
+      try {
+        op = getCliService().executeStatement(getHiveSessionHandle(sessionid), command, null);
+      } finally {
+        if (op != null) {
+          try {
+            getCliService().closeOperation(op);
+          } catch (HiveSQLException exc) {
+            LOG.warn("Failed to close set param operation " + command + " session:" + sessionid.getPublicId(), exc);
+          }
+        }
+      }
+
       // add to persist
       if (addToSession) {
         getSession(sessionid).setConfig(key, value);
