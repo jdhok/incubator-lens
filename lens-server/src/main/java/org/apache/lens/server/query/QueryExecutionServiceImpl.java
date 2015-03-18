@@ -992,18 +992,32 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
 
     // Wait for all rewrite and estimates to finish
     try {
-      // TODO timeout value should be obtained from server conf
-      boolean completed = estimateCompletionLatch.await(120000, TimeUnit.MILLISECONDS);
-      // log operations yet to complete
+      long latchTimeout = conf.getLong(LensConfConstants.PARALLEL_ESTIMATE_TIMEOUT_MILLIS,
+        LensConfConstants.DEFAULT_PARALLEL_ESTIMATE_TIMEOUT_MILLIS);
+      boolean completed = estimateCompletionLatch.await(latchTimeout, TimeUnit.MILLISECONDS);
+
+      // log operations yet to complete and  check if we can proceed with at least one driver
       if (!completed) {
-        int inCompleteCount = 0;
+        List<LensDriver> inCompleteDrivers = new ArrayList<LensDriver>(ctx.getDriverContext().getDrivers().size());
         for (RewriteEstimateRunnable r : runnables) {
           if (!r.isCompleted()) {
-            inCompleteCount++;
-            LOG.warn("Rewrite and estimate not complete for " + r.getDriver().getClass().getSimpleName());
+            inCompleteDrivers.add(r.getDriver());
+            ctx.getDriverContext().getDriverQueryContextMap().remove(r.getDriver());
           }
         }
-        throw new LensException(inCompleteCount + " drivers could not complete estimate call in given time");
+        LOG.warn(inCompleteDrivers + " drivers could not complete estimate call in given time. session: "
+         + ctx.getLensSessionIdentifier());
+
+
+        if (ctx.getDriverContext().getDrivers().isEmpty()) {
+          String debugInfo = "session: " + ctx.getLensSessionIdentifier();
+          if (ctx instanceof QueryContext) {
+            debugInfo += " query: " + ((QueryContext) ctx).getQueryHandle().getHandleId();
+          }
+          throw new LensException("None of the drivers could complete within given timeout: " + latchTimeout
+            + ". " + debugInfo);
+        }
+
       }
     } catch (InterruptedException exc) {
       throw new LensException("At least one of the estimate operation failed to complete in time", exc);

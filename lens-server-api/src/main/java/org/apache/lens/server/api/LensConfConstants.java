@@ -847,4 +847,14 @@ public final class LensConfConstants {
    */
   public static final String QUERY_METRIC_DRIVER_STACK_NAME = QUERY_PFX + "metric.driver.stack.name";
 
+  /**
+   * Timeout for parallel query estimate calls. A driver needs to comeback with a query estimate within this timeout.
+   */
+  public static final String PARALLEL_ESTIMATE_TIMEOUT_MILLIS = SERVER_PFX + "parallel.estimate.timeout.millis";
+
+  /**
+   * Default value for timeout for parallel estimate calls.
+   */
+  public static final long DEFAULT_PARALLEL_ESTIMATE_TIMEOUT_MILLIS = 10000L;
+
 }

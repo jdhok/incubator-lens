@@ -1477,8 +1477,8 @@ public class TestQueryService extends LensJerseyTest {
     Assert.assertNull(result.getCost());
     Assert.assertTrue(result.isError());
     System.out.println("ERROR for REWRITE:" + result.getErrorMsg());
-    Assert.assertTrue(result.getErrorMsg().contains("No driver accepted the query, because Neither cube nor dimensions"
-      + " accessed in the query"));
+    Assert.assertTrue(result.getErrorMsg().contains("Cause :Neither cube nor dimensions accessed in the query"),
+      result.getErrorMsg());
   }
 
   @Test

@@ -644,4 +644,14 @@
     will be ignored</description>
   </property>
 
+  <property>
+    <name>lens.server.parallel.estimate.timeout.millis</name>
+    <value>120000</value>
+    <description>Timeout for parallel query estimate calls in milliseconds.
+      A driver needs to comeback with a query estimate within this timeout. If the timeout is reached, only the drivers
+      that have provided an estimate would be considered for query selection. If the timeout is reached and none
+      of the drivers have provided an estimate then estimate calls fails with an exception.
+    </description>
+  </property>
+
 </configuration>

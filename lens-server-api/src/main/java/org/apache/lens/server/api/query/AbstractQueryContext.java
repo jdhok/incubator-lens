@@ -20,6 +20,8 @@ package org.apache.lens.server.api.query;
 
 import java.io.Serializable;
 import java.util.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.lens.api.LensConf;
 import org.apache.lens.api.LensException;
@@ -109,6 +111,9 @@ public abstract class AbstractQueryContext implements Serializable {
   @Getter
   @Setter
   private boolean olapQuery = false;
+
+  /** Lock used to synchronize HiveConf access */
+  private final Lock hiveConfLock = new ReentrantLock();
 
   protected AbstractQueryContext(final String query, final String user, final LensConf qconf, final Configuration conf,
     final Collection<LensDriver> drivers, boolean mergeDriverConf) {
@@ -373,10 +378,15 @@ public abstract class AbstractQueryContext implements Serializable {
    * Should be called judiciously, because constructing HiveConf from conf object is costly.
    * @return
    */
-  public synchronized HiveConf getHiveConf() {
-    if (hiveConf == null) {
-      hiveConf = new HiveConf(this.conf, this.getClass());
-      hiveConf.setClassLoader(this.conf.getClassLoader());
+  public HiveConf getHiveConf() {
+    hiveConfLock.lock();
+    try {
+      if (hiveConf == null) {
+        hiveConf = new HiveConf(this.conf, this.getClass());
+        hiveConf.setClassLoader(this.conf.getClassLoader());
+      }
+    } finally {
+      hiveConfLock.unlock();
     }
     return hiveConf;
   }
