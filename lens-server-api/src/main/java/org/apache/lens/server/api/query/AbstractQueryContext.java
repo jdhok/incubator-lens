@@ -167,12 +167,7 @@ public abstract class AbstractQueryContext implements Serializable {
     Map<LensDriver, DriverEstimateRunnable> estimateRunnables = new HashMap<LensDriver, DriverEstimateRunnable>();
 
     for (LensDriver driver : driverContext.getDrivers()) {
-      estimateRunnables.put(driver,
-        new DriverEstimateRunnable(
-          this,
-          driverContext.driverQueryContextMap.get(driver),
-          driver
-        ));
+      estimateRunnables.put(driver, new DriverEstimateRunnable(this, driver));
     }
 
     return estimateRunnables;
@@ -184,7 +179,6 @@ public abstract class AbstractQueryContext implements Serializable {
    */
   public static class DriverEstimateRunnable implements Runnable {
     private final AbstractQueryContext queryContext;
-    private final DriverQueryContext driverQueryContext;
     private final LensDriver driver;
 
     @Getter
@@ -195,10 +189,8 @@ public abstract class AbstractQueryContext implements Serializable {
 
 
     public DriverEstimateRunnable(AbstractQueryContext queryContext,
-                                  DriverQueryContext driverQueryContext,
                                   LensDriver driver) {
       this.queryContext = queryContext;
-      this.driverQueryContext = driverQueryContext;
       this.driver = driver;
     }
 
@@ -206,6 +198,7 @@ public abstract class AbstractQueryContext implements Serializable {
     public void run() {
       MethodMetricsContext estimateGauge =
         MethodMetricsFactory.createMethodGauge(queryContext.getDriverConf(driver), true, "driverEstimate");
+      DriverQueryContext driverQueryContext = queryContext.getDriverContext().getDriverQueryContextMap().get(driver);
       if (driverQueryContext.getDriverQueryRewriteError() != null) {
         // skip estimate
         return;
