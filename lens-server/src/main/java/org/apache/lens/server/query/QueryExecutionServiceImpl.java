@@ -1006,7 +1006,7 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
           }
         }
         LOG.warn(inCompleteDrivers + " drivers could not complete estimate call in given time. session: "
-         + ctx.getLensSessionIdentifier());
+          + ctx.getLensSessionIdentifier());
 
 
         if (ctx.getDriverContext().getDrivers().isEmpty()) {
