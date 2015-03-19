@@ -154,7 +154,7 @@
   </property>
 
   <property>
-    <name>lens.server.parallel.estimate.timeout.millis</name>
+    <name>lens.server.estimate.timeout.millis</name>
     <value>120000</value>
   </property>
 

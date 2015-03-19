@@ -23,6 +23,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
@@ -866,7 +867,7 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
     module.addSerializer(ColumnDescriptor.class, new JsonSerializer<ColumnDescriptor>() {
       @Override
       public void serialize(ColumnDescriptor columnDescriptor, JsonGenerator jsonGenerator,
-        SerializerProvider serializerProvider) throws IOException, JsonProcessingException {
+                            SerializerProvider serializerProvider) throws IOException, JsonProcessingException {
         jsonGenerator.writeStartObject();
         jsonGenerator.writeStringField("name", columnDescriptor.getName());
         jsonGenerator.writeStringField("comment", columnDescriptor.getComment());
@@ -953,8 +954,35 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
     statusPoller.start();
     queryPurger.start();
     prepareQueryPurger.start();
-    // TODO Tune thread pool properly using conf
-    estimatePool = Executors.newCachedThreadPool();
+
+    startEstimatePool();
+  }
+
+  private void startEstimatePool() {
+    int minPoolSize = conf.getInt(LensConfConstants.ESTIMATE_POOL_MIN_THREADS,
+      LensConfConstants.DEFAULT_ESTIMATE_POOL_MIN_THREADS);
+    int maxPoolSize = conf.getInt(LensConfConstants.ESTIMATE_POOL_MAX_THREADS,
+      LensConfConstants.DEFAULT_ESTIMATE_POOL_MAX_THREADS);
+    int keepAlive = conf.getInt(LensConfConstants.ESTIMATE_POOL_KEEP_ALIVE_MILLIS,
+      LensConfConstants.DEFAULT_ESTIMATE_POOL_KEEP_ALIVE_MILLIS);
+
+    final ThreadFactory defaultFactory = Executors.defaultThreadFactory();
+    final AtomicInteger thId = new AtomicInteger();
+    // We are creating our own thread factory, just so that we can override thread name for easy debugging
+    ThreadFactory threadFactory = new ThreadFactory() {
+      @Override
+      public Thread newThread(Runnable r) {
+        Thread th = defaultFactory.newThread(r);
+        th.setName("estimate-" + thId.incrementAndGet());
+        return th;
+      }
+    };
+
+    ThreadPoolExecutor estimatePool = new ThreadPoolExecutor(minPoolSize, maxPoolSize, keepAlive, TimeUnit.MILLISECONDS,
+      new LinkedBlockingQueue<Runnable>(), threadFactory);
+    estimatePool.allowCoreThreadTimeOut(true);
+    estimatePool.prestartCoreThread();
+    this.estimatePool = estimatePool;
   }
 
   private static final String ALL_REWRITES_GAUGE = "ALL_CUBE_REWRITES";
@@ -992,8 +1020,8 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
 
     // Wait for all rewrite and estimates to finish
     try {
-      long latchTimeout = conf.getLong(LensConfConstants.PARALLEL_ESTIMATE_TIMEOUT_MILLIS,
-        LensConfConstants.DEFAULT_PARALLEL_ESTIMATE_TIMEOUT_MILLIS);
+      long latchTimeout = conf.getLong(LensConfConstants.ESTIMATE_TIMEOUT_MILLIS,
+        LensConfConstants.DEFAULT_ESTIMATE_TIMEOUT_MILLIS);
       boolean completed = estimateCompletionLatch.await(latchTimeout, TimeUnit.MILLISECONDS);
 
       // log operations yet to complete and  check if we can proceed with at least one driver
