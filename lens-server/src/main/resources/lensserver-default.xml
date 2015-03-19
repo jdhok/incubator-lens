@@ -646,7 +646,7 @@
 
   <property>
     <name>lens.server.estimate.timeout.millis</name>
-    <value>120000</value>
+    <value>300000</value>
     <description>Timeout for parallel query estimate calls in milliseconds.
       A driver needs to comeback with a query estimate within this timeout. If the timeout is reached, only the drivers
       that have provided an estimate would be considered for query selection. If the timeout is reached and none

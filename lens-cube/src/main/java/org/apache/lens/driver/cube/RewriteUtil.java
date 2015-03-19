@@ -270,10 +270,8 @@ public final class RewriteUtil {
         REWRITE_QUERY_GAUGE);
       StringBuilder builder = new StringBuilder();
       int start = 0;
-
+      CubeQueryRewriter rewriter = null;
       try {
-        CubeQueryRewriter rewriter = null;
-
         if (cubeQueries.size() > 0) {
           // avoid creating rewriter if there are no cube queries
           rewriter = getCubeRewriter(ctx.getDriverContext().getDriverConf(driver), ctx.getHiveConf());
@@ -322,6 +320,9 @@ public final class RewriteUtil {
           .append(" Cause :" + e.getLocalizedMessage())
           .toString();
       } finally {
+        if (rewriter != null) {
+          rewriter.clear();
+        }
         rewriteGauge.markSuccess();
       }
     }

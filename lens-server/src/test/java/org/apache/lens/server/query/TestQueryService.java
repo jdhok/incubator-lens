@@ -1538,9 +1538,16 @@ public class TestQueryService extends LensJerseyTest {
     MetricRegistry reg = LensMetricsRegistry.getStaticRegistry();
 
     Assert.assertTrue(reg.getGauges().keySet().containsAll(Arrays.asList(
-      "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-ALL_CUBE_REWRITES",
-      "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-ALL_DRIVER_ESTIMATES",
-      "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-DRIVER_SELECTION")),
+        "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-DRIVER_SELECTION",
+        "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-HiveDriver-CUBE_REWRITE",
+        "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-HiveDriver-DRIVER_ESTIMATE",
+        "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-HiveDriver-"
+          + "org.apache.lens.driver.cube.RewriteUtil-rewriteQuery",
+        "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-JDBCDriver-CUBE_REWRITE",
+        "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-JDBCDriver-DRIVER_ESTIMATE",
+        "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-JDBCDriver-"
+          + "org.apache.lens.driver.cube.RewriteUtil-rewriteQuery",
+        "lens.MethodMetricGauge.TestQueryService-testEstimateGauges-PARALLEL_ESTIMATE")),
       reg.getGauges().keySet().toString());
   }
 }

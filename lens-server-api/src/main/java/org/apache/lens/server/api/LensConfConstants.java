@@ -855,7 +855,7 @@ public final class LensConfConstants {
   /**
    * Default value for timeout for parallel estimate calls.
    */
-  public static final long DEFAULT_ESTIMATE_TIMEOUT_MILLIS = 10000L;
+  public static final long DEFAULT_ESTIMATE_TIMEOUT_MILLIS = 300000L; // 5 minutes
 
 
   /**

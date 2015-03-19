@@ -161,7 +161,7 @@ public abstract class AbstractQueryContext implements Serializable {
   }
 
   /**
-   * Get runnables wrapping estimate computation, which coule be processed offline
+   * Get runnables wrapping estimate computation, which could be processed offline
    */
   public Map<LensDriver, DriverEstimateRunnable> getDriverEstimateRunnables() throws LensException {
     Map<LensDriver, DriverEstimateRunnable> estimateRunnables = new HashMap<LensDriver, DriverEstimateRunnable>();
@@ -394,8 +394,22 @@ public abstract class AbstractQueryContext implements Serializable {
     driverContext.driverQueryContextMap.get(driver).setFinalDriverQuery(rewrittenQuery);
   }
 
+  /**
+   * Set query for a given driver
+   * @param driver driver instance
+   * @param query query string
+   * @throws LensException
+   */
   public void setDriverQuery(LensDriver driver, String query) {
     driverContext.setDriverQuery(driver, query);
     isDriverQueryExplicitlySet = true;
+  }
+
+  /**
+   * Get handle of the query for logging purposes
+   * @return
+   */
+  public String getLogHandle() {
+    return this.getUserQuery();
   }
 }

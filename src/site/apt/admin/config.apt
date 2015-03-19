@@ -81,7 +81,7 @@ Lens server configuration
 *--+--+---+--+
 |27|lens.server.estimate.pool.min.threads|3|Minimum number of threads in the estimate thread pool|
 *--+--+---+--+
-|28|lens.server.estimate.timeout.millis|120000|Timeout for parallel query estimate calls in milliseconds. A driver needs to comeback with a query estimate within this timeout. If the timeout is reached, only the drivers that have provided an estimate would be considered for query selection. If the timeout is reached and none of the drivers have provided an estimate then estimate calls fails with an exception.|
+|28|lens.server.estimate.timeout.millis|300000|Timeout for parallel query estimate calls in milliseconds. A driver needs to comeback with a query estimate within this timeout. If the timeout is reached, only the drivers that have provided an estimate would be considered for query selection. If the timeout is reached and none of the drivers have provided an estimate then estimate calls fails with an exception.|
 *--+--+---+--+
 |29|lens.server.event.service.thread.pool.size| |The size of thread pool for notifying events. The no value is specified, it uses the available processors as the number.|
 *--+--+---+--+

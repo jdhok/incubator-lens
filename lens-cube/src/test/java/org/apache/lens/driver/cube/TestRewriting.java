@@ -155,8 +155,11 @@ public class TestRewriting {
       if (r.isSucceeded()) {
         Assert.assertNull(r.getFailureCause(), driver
           + " succeeded but failure cause is set to " + r.getFailureCause());
+        Assert.assertNotNull(r.getRewrittenQuery(), driver + " succeeded but rewritten query is not set");
       } else {
         Assert.assertNotNull(r.getFailureCause(), driver + " failed but failure cause is not set");
+        Assert.assertNull(r.getRewrittenQuery(),
+          driver + " failed but rewritten query is set to " + r.getRewrittenQuery());
       }
 
     }
@@ -433,7 +436,8 @@ public class TestRewriting {
     itr.next();
     LensDriver failedDriver = itr.next();
     Assert.assertFalse(dQueries.get(failedDriver).isSucceeded(),  failedDriver + " rewrite should have failed");
-
+    Assert.assertNull(dQueries.get(failedDriver).getRewrittenQuery(),
+      failedDriver + " rewritten query should not be set");
     // running again will fail on both drivers
     ctx = new QueryContext(q2, null, lensConf, conf, drivers);
     Map<LensDriver, RewriteUtil.DriverRewriterRunnable> runnables = RewriteUtil.rewriteQuery(ctx);
@@ -441,11 +445,12 @@ public class TestRewriting {
 
     Assert.assertFalse(runnables.get(driver).isSucceeded());
     Assert.assertNotNull(runnables.get(driver).getFailureCause());
+    Assert.assertNull(runnables.get(driver).getRewrittenQuery());
+    Assert.assertNotNull(ctx.getDriverRewriteError(driver));
 
     Assert.assertFalse(runnables.get(driver2).isSucceeded());
     Assert.assertNotNull(runnables.get(driver2).getFailureCause());
-
-    Assert.assertNotNull(ctx.getDriverRewriteError(driver));
+    Assert.assertNull(runnables.get(driver2).getRewrittenQuery());
     Assert.assertNotNull(ctx.getDriverRewriteError(driver2));
   }
 }
