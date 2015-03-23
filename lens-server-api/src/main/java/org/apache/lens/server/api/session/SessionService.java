@@ -133,5 +133,5 @@ public interface SessionService {
   /**
    * Returns true if the session is open
    */
-  public boolean isOpen(LensSessionHandle sessionHandle);
+  boolean isOpen(LensSessionHandle sessionHandle);
 }

@@ -22,8 +22,9 @@ import org.apache.lens.api.LensException;
 import org.apache.lens.api.LensSessionHandle;
 import org.apache.lens.api.query.QueryHandle;
 
-import lombok.Setter;
 import lombok.Getter;
+import lombok.Setter;
+
 /**
  * Run a query against a Lens server.
  */
