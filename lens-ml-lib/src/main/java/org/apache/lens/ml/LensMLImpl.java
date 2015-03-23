@@ -687,7 +687,7 @@ public class LensMLImpl implements LensML {
     LOG.info("Registering UDF for session " + sessionHandle.getPublicId().toString());
     // We have to add UDF jars to the session
     try {
-      SessionService sessionService = MLUtils.getServiceProvider().getService(SessionService.NAME);
+      SessionService sessionService = (SessionService) MLUtils.getServiceProvider().getService(SessionService.NAME);
       String[] udfJars = conf.getStrings("lens.server.ml.predict.udf.jars");
       if (udfJars != null) {
         for (String jar : udfJars) {
@@ -717,7 +717,7 @@ public class LensMLImpl implements LensML {
   private class UDFStatusExpiryRunnable implements Runnable {
     public void run() {
       try {
-        SessionService sessionService = MLUtils.getServiceProvider().getService(SessionService.NAME);
+        SessionService sessionService = (SessionService) MLUtils.getServiceProvider().getService(SessionService.NAME);
         // Clear status of sessions which are closed.
         List<LensSessionHandle> sessions = new ArrayList<LensSessionHandle>(predictUdfStatus.keySet());
         for (LensSessionHandle sessionHandle : sessions) {
