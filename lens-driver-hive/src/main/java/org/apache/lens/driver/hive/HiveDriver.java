@@ -95,6 +95,7 @@ public class HiveDriver implements LensDriver {
   public static final float MONTHLY_PARTITION_WEIGHT_DEFAULT = 0.5f;
   public static final float DAILY_PARTITION_WEIGHT_DEFAULT = 0.75f;
   public static final float HOURLY_PARTITION_WEIGHT_DEFAULT = 1.0f;
+  public static final String SESSION_KEY_DELIMITER = ".";
 
   /** The driver conf- which will merged with query conf */
   private Configuration driverConf;
@@ -138,13 +139,20 @@ public class HiveDriver implements LensDriver {
   // package-local. Test case can change.
   boolean whetherCalculatePriority;
 
+
+  private String sessionDbKey(String sessionHandle, String database) {
+    return sessionHandle + SESSION_KEY_DELIMITER + database;
+  }
+
   /**
    * Return true if resources have been added to this Hive session
-   * @param sessionHandle
-   * @return
+   * @param sessionHandle lens session identifier
+   * @param database lens database
+   * @return true if resources have been already added to this session + db pair
    */
-  public boolean areRsourcesAddedForSession(String sessionHandle) {
-    SessionHandle hiveSession = lensToHiveSession.get(sessionHandle);
+  public boolean areRsourcesAddedForSession(String sessionHandle, String database) {
+    String key = sessionDbKey(sessionHandle, database);
+    SessionHandle hiveSession = lensToHiveSession.get(key);
     return hiveSession != null
       && resourcesAddedForSession.containsKey(hiveSession)
       && resourcesAddedForSession.get(hiveSession);
@@ -154,8 +162,9 @@ public class HiveDriver implements LensDriver {
    * Tell Hive driver that resources have been added for this session
    * @param sessionHandle
    */
-  public void setResourcesAddedForSession(String sessionHandle) {
-    resourcesAddedForSession.put(lensToHiveSession.get(sessionHandle), Boolean.TRUE);
+  public void setResourcesAddedForSession(String sessionHandle, String database) {
+    SessionHandle hiveSession = lensToHiveSession.get(sessionDbKey(sessionHandle, database));
+    resourcesAddedForSession.put(hiveSession, Boolean.TRUE);
   }
 
   /**
@@ -382,6 +391,7 @@ public class HiveDriver implements LensDriver {
 
     QueryContext explainQueryCtx = QueryContext.createContextWithSingleDriver(explainQuery,
       explainCtx.getSubmittedUser(), new LensConf(), explainConf, this, explainCtx.getLensSessionIdentifier(), false);
+
     // Get result set of explain
     HiveInMemoryResultSet inMemoryResultSet = (HiveInMemoryResultSet) execute(explainQueryCtx);
     List<String> explainOutput = new ArrayList<String>();
@@ -707,14 +717,14 @@ public class HiveDriver implements LensDriver {
     // Close this driver and release all resources
     sessionLock.lock();
     try {
-      for (String lensSession : lensToHiveSession.keySet()) {
+      for (String key : lensToHiveSession.keySet()) {
         try {
-          getClient().closeSession(lensToHiveSession.get(lensSession));
+          getClient().closeSession(lensToHiveSession.get(key));
         } catch (Exception e) {
           checkInvalidSession(e);
           LOG.warn(
-            "Error closing session for lens session: " + lensSession + ", hive session: "
-              + lensToHiveSession.get(lensSession), e);
+            "Error closing session for lens session: " + key + ", hive session: "
+              + lensToHiveSession.get(key), e);
         }
       }
       lensToHiveSession.clear();
@@ -857,6 +867,7 @@ public class HiveDriver implements LensDriver {
     sessionLock.lock();
     try {
       String lensSession = ctx.getLensSessionIdentifier();
+      String sessionDbKey = sessionDbKey(lensSession, ctx.getDatabase());
       if (lensSession == null && SessionState.get() != null) {
         lensSession = SessionState.get().getSessionId();
       }
@@ -866,12 +877,12 @@ public class HiveDriver implements LensDriver {
       }
 
       SessionHandle hiveSession;
-      if (!lensToHiveSession.containsKey(lensSession)) {
+      if (!lensToHiveSession.containsKey(sessionDbKey)) {
         try {
           hiveSession = getClient().openSession(ctx.getClusterUser(), "");
-          lensToHiveSession.put(lensSession, hiveSession);
-          LOG.info("New hive session for user: " + ctx.getClusterUser() + ", lens session: " + lensSession
-            + " session handle: " + hiveSession.getHandleIdentifier());
+          lensToHiveSession.put(sessionDbKey, hiveSession);
+          LOG.info("New hive session for user: " + ctx.getClusterUser() + ", lens session: " + sessionDbKey
+            + " hive session handle: " + hiveSession.getHandleIdentifier());
           for (LensEventListener<DriverEvent> eventListener : driverListeners) {
             try {
               eventListener.onEvent(new DriverSessionStarted(System.currentTimeMillis(), this, lensSession, hiveSession
@@ -884,7 +895,7 @@ public class HiveDriver implements LensDriver {
           throw new LensException(e);
         }
       } else {
-        hiveSession = lensToHiveSession.get(lensSession);
+        hiveSession = lensToHiveSession.get(sessionDbKey);
       }
       return hiveSession;
     } finally {
@@ -1164,19 +1175,24 @@ public class HiveDriver implements LensDriver {
    * @param sessionHandle the session handle
    */
   public void closeSession(LensSessionHandle sessionHandle) {
+    String sessionIdentifier = sessionHandle.getPublicId().toString();
     sessionLock.lock();
     try {
-      SessionHandle hiveSession = lensToHiveSession.remove(sessionHandle.getPublicId().toString());
-      if (hiveSession != null) {
-        try {
-          getClient().closeSession(hiveSession);
-          LOG.info("Closed Hive session " + hiveSession.getHandleIdentifier() + " for lens session "
-            + sessionHandle.getPublicId());
-        } catch (Exception e) {
-          LOG.error("Error closing hive session " + hiveSession.getHandleIdentifier() + " for lens session "
-            + sessionHandle.getPublicId(), e);
+      for (String sessionDbKey : new ArrayList<String>(lensToHiveSession.keySet())) {
+        if (sessionDbKey.startsWith(sessionIdentifier)) {
+          SessionHandle hiveSession = lensToHiveSession.remove(sessionDbKey);
+          if (hiveSession != null) {
+            try {
+              getClient().closeSession(hiveSession);
+              LOG.info("Closed Hive session " + hiveSession.getHandleIdentifier() + " for lens session "
+                + sessionDbKey);
+            } catch (Exception e) {
+              LOG.error("Error closing hive session " + hiveSession.getHandleIdentifier()
+                + " for lens session " + sessionDbKey, e);
+            }
+            resourcesAddedForSession.remove(hiveSession);
+          }
         }
-        resourcesAddedForSession.remove(hiveSession);
       }
     } finally {
       sessionLock.unlock();

@@ -37,6 +37,7 @@ import org.apache.lens.server.util.UtilityMethods;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.common.JavaUtils;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hive.service.cli.HiveSQLException;
@@ -162,6 +163,24 @@ public class LensSessionImpl extends HiveSessionImpl {
     initPersistInfo(getSessionHandle(), username, password, sessionConf);
     sessionTimeout = 1000 * serverConf.getLong(LensConfConstants.SESSION_TIMEOUT_SECONDS,
       LensConfConstants.SESSION_TIMEOUT_SECONDS_DEFAULT);
+  }
+
+  @Override
+  public void close() throws HiveSQLException {
+    super.close();
+
+    // Release class loader resources
+    synchronized (sessionDbClassLoaders) {
+      for (ClassLoader classLoader : sessionDbClassLoaders.values()) {
+        try {
+          // This is a utility in hive-common
+          JavaUtils.closeClassLoader(classLoader);
+        } catch (IOException e) {
+          LOG.error("Error closing session classloader for session: " + getSessionHandle().getSessionId(), e);
+        }
+      }
+      sessionDbClassLoaders.clear();
+    }
   }
 
   public CubeMetastoreClient getCubeMetastoreClient() throws LensException {
@@ -352,8 +371,8 @@ public class LensSessionImpl extends HiveSessionImpl {
    * Return resources which are added statically to the current database
    * @return
    */
-  public Collection<ResourceEntry> getCurrentDBResources() {
-    return getDbResService().getResourcesForDatabase(getCurrentDatabase());
+  public Collection<ResourceEntry> getDBResources(String database) {
+    return getDbResService().getResourcesForDatabase(database);
   }
 
   /**

@@ -2368,37 +2368,14 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
 
   /**
    * Add session's resources to selected driver if needed
-   * @param ctx QueryContext for executinf queries
+   * @param ctx the query context
    * @throws LensException
    */
-  protected void maybeAddSessionResourcesToDriver(final QueryContext ctx) throws LensException {
-    maybeAddSessionResourcesToDriver(ctx.getLensSessionIdentifier(), ctx.getSelectedDriver(),
-      ctx.getQueryHandle().toString());
-  }
+  protected void maybeAddSessionResourcesToDriver(final AbstractQueryContext ctx) {
+    LensDriver driver = ctx.getSelectedDriver();
+    String sessionIdentifier = ctx.getLensSessionIdentifier();
 
-  /**
-   * Add session's resources to selected driver if needed.
-   * @param ctx ExplainQueryContext for explain queries
-   * @throws LensException
-   */
-  protected void maybeAddSessionResourcesToDriver(final ExplainQueryContext ctx) throws LensException {
-    maybeAddSessionResourcesToDriver(ctx.getLensSessionIdentifier(), ctx.getSelectedDriver(),
-      ctx.getSelectedDriverQuery());
-  }
-
-  /**
-   * Add session's resources to selected driver if needed.
-   * @param ctx PreparedQueryContext for explainAndPrepare(Async) queries
-   * @throws LensException
-   */
-  protected void maybeAddSessionResourcesToDriver(final PreparedQueryContext ctx) throws LensException {
-    maybeAddSessionResourcesToDriver(ctx.getLensSessionIdentifier(), ctx.getSelectedDriver(),
-      ctx.getPrepareHandle().toString());
-  }
-
-  private void maybeAddSessionResourcesToDriver(String sessionIdentifier, LensDriver driver, String queryHandle)
-    throws LensException {
-    if (!(driver instanceof HiveDriver) || sessionIdentifier == null || sessionIdentifier.isEmpty()) {
+    if (!(driver instanceof HiveDriver) || StringUtils.isBlank(sessionIdentifier)) {
       // Adding resources only required for Hive driver
       return;
     }
@@ -2411,12 +2388,12 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
 
     // Add resources if either they haven't been marked as added on the session, or if Hive driver says they need
     // to be added to the corresponding hive driver
-    if (!hiveDriver.areRsourcesAddedForSession(sessionIdentifier)) {
-      Collection<LensSessionImpl.ResourceEntry> dbResources = session.getCurrentDBResources();
+    if (!hiveDriver.areRsourcesAddedForSession(sessionIdentifier, ctx.getDatabase())) {
+      Collection<LensSessionImpl.ResourceEntry> dbResources = session.getDBResources(ctx.getDatabase());
 
       if (dbResources != null && !dbResources.isEmpty()) {
         LOG.info("Proceeding to add resources for DB "
-          + session.getCurrentDatabase() + " for query " + queryHandle + " resources: " + dbResources);
+          + session.getCurrentDatabase() + " for query " + ctx.getLogHandle() + " resources: " + dbResources);
 
         for (LensSessionImpl.ResourceEntry res : dbResources) {
           String uri = res.getLocation();
@@ -2440,7 +2417,7 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
           + " db= " + session.getCurrentDatabase());
       }
 
-      hiveDriver.setResourcesAddedForSession(sessionIdentifier);
+      hiveDriver.setResourcesAddedForSession(sessionIdentifier, ctx.getDatabase());
     }
   }
 }
