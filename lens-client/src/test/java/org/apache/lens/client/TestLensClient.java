@@ -77,8 +77,6 @@ public class TestLensClient extends LensAllApplicationJerseyTest {
     LensClient client = new LensClient(lensClientConfig);
     Assert.assertEquals(client.getCurrentDatabae(), TEST_DB,
       "current database");
-    List<String> dbs = client.getAllDatabases();
-    Assert.assertEquals(dbs.size(), 3, "no of databases");
     client.createDatabase("testclientdb", true);
     Assert.assertTrue(client.getAllDatabases().contains("testclientdb"));
     client.dropDatabase("testclientdb");

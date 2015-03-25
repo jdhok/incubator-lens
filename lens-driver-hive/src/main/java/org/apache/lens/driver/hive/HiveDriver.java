@@ -1106,24 +1106,39 @@ public class HiveDriver implements LensDriver {
       lensSession = SessionState.get().getSessionId();
     }
 
-    SessionHandle session = lensToHiveSession.get(lensSession);
-
-    if (session == null || lensSession == null) {
+    if (lensSession == null) {
       return;
     }
 
-    if (isSessionInvalid(exc, session)) {
-      // We have to expire previous session
-      LOG.info("Hive server session " + session + " for lens session " + lensSession + " has become invalid");
-      sessionLock.lock();
-      try {
-        // We should close all connections and clear the session map since
-        // most likely all sessions are gone
-        closeAllConnections();
-        lensToHiveSession.clear();
-        LOG.info("Cleared all sessions");
-      } finally {
-        sessionLock.unlock();
+    // Get all hive sessions corresponding to the lens session and check if
+    // any of those sessions have become invalid
+    List<String> sessionKeys = new ArrayList<String>(lensToHiveSession.keySet());
+    List<SessionHandle> hiveSessionsToCheck = new ArrayList<SessionHandle>();
+    sessionLock.lock();
+    try {
+      for (String key : sessionKeys) {
+        if (key.startsWith(lensSession)) {
+          hiveSessionsToCheck.add(lensToHiveSession.get(key));
+        }
+      }
+    } finally {
+      sessionLock.unlock();
+    }
+
+    for (SessionHandle session : hiveSessionsToCheck) {
+      if (isSessionInvalid(exc, session)) {
+        // We have to expire previous session
+        LOG.info("Hive server session " + session + " for lens session " + lensSession + " has become invalid");
+        sessionLock.lock();
+        try {
+          // We should close all connections and clear the session map since
+          // most likely all sessions are gone
+          closeAllConnections();
+          lensToHiveSession.clear();
+          LOG.info("Cleared all sessions");
+        } finally {
+          sessionLock.unlock();
+        }
       }
     }
   }
