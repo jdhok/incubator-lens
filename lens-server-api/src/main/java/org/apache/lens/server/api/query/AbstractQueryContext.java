@@ -113,7 +113,6 @@ public abstract class AbstractQueryContext implements Serializable {
   @Setter
   private boolean olapQuery = false;
 
-  @Getter
   private final String database;
 
   /** Lock used to synchronize HiveConf access */
@@ -428,5 +427,13 @@ public abstract class AbstractQueryContext implements Serializable {
    */
   public String getLogHandle() {
     return this.getUserQuery();
+  }
+
+  /**
+   * Returns database set while launching query
+   * @return
+   */
+  public String getDatabase() {
+    return database == null ? "default" : database;
   }
 }

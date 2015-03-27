@@ -2414,7 +2414,7 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
     Collection<LensSessionImpl.ResourceEntry> pendingResources =
       session.getPendingSessionResourcesForDatabase(ctx.getDatabase());
     LOG.info("Adding pending " + pendingResources.size() + " session resources for session " + sessionIdentifier
-     + " for database " + ctx.getDatabase()) ;
+      + " for database " + ctx.getDatabase());
     List<LensSessionImpl.ResourceEntry> failedResources = addResources(pendingResources, sessionHandle, hiveDriver);
     // Mark added resources so that we don't add them again. If any of the resources failed
     // to be added, then they will be added again
