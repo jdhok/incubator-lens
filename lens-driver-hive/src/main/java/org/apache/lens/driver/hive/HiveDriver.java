@@ -150,7 +150,7 @@ public class HiveDriver implements LensDriver {
    * @param database lens database
    * @return true if resources have been already added to this session + db pair
    */
-  public boolean areRsourcesAddedForSession(String sessionHandle, String database) {
+  public boolean areDBRsourcesAddedForSession(String sessionHandle, String database) {
     String key = sessionDbKey(sessionHandle, database);
     SessionHandle hiveSession = lensToHiveSession.get(key);
     return hiveSession != null
@@ -717,14 +717,13 @@ public class HiveDriver implements LensDriver {
     // Close this driver and release all resources
     sessionLock.lock();
     try {
-      for (String key : lensToHiveSession.keySet()) {
+      for (String lensSessionDbKey : lensToHiveSession.keySet()) {
         try {
-          getClient().closeSession(lensToHiveSession.get(key));
+          getClient().closeSession(lensToHiveSession.get(lensSessionDbKey));
         } catch (Exception e) {
           checkInvalidSession(e);
-          LOG.warn(
-            "Error closing session for lens session: " + key + ", hive session: "
-              + lensToHiveSession.get(key), e);
+          LOG.warn("Error closing session for lens session: " + lensSessionDbKey + ", hive session: "
+              + lensToHiveSession.get(lensSessionDbKey), e);
         }
       }
       lensToHiveSession.clear();

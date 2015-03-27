@@ -70,6 +70,12 @@ public class LensSessionImpl extends HiveSessionImpl {
   /** The conf. */
   private Configuration conf = createDefaultConf();
 
+  /**
+   * Keep track of DB static resources which failed to be added to this session
+   */
+  private final Map<String, List<ResourceEntry>> failedDBResources = new HashMap<String, List<ResourceEntry>>();
+
+
 
   /**
    * Cache of database specific class loaders for this session
@@ -171,11 +177,14 @@ public class LensSessionImpl extends HiveSessionImpl {
 
     // Release class loader resources
     synchronized (sessionDbClassLoaders) {
-      for (ClassLoader classLoader : sessionDbClassLoaders.values()) {
+      for (Map.Entry<String, ClassLoader> entry : sessionDbClassLoaders.entrySet()) {
         try {
-          // This is a utility in hive-common
-          JavaUtils.closeClassLoader(classLoader);
-        } catch (IOException e) {
+          // Close the class loader only if its not a class loader maintained by the DB service
+          if (entry.getValue() != getDbResService().getClassLoader(entry.getKey())) {
+            // This is a utility in hive-common
+            JavaUtils.closeClassLoader(entry.getValue());
+          }
+        } catch (Exception e) {
           LOG.error("Error closing session classloader for session: " + getSessionHandle().getSessionId(), e);
         }
       }
@@ -262,7 +271,9 @@ public class LensSessionImpl extends HiveSessionImpl {
    * @param path the path
    */
   public void addResource(String type, String path) {
-    persistInfo.getResources().add(new ResourceEntry(type, path));
+    ResourceEntry resource = new ResourceEntry(type, path);
+    resource.addToDatabase(getSessionState().getCurrentDatabase());
+    persistInfo.getResources().add(resource);
     synchronized (sessionDbClassLoaders) {
       // Update all DB class loaders
       updateSessionDbClassLoader(getSessionState().getCurrentDatabase());
@@ -314,7 +325,9 @@ public class LensSessionImpl extends HiveSessionImpl {
         try {
           ClassLoader classLoader = getDbResService().getClassLoader(database);
           if (classLoader == null) {
-            LOG.warn("DB resource service gave null class loader for " + database);
+            if (LOG.isDebugEnabled()) {
+              LOG.debug("DB resource service gave null class loader for " + database);
+            }
           } else {
             if (areResourcesAdded()) {
               // We need to update DB specific classloader with added resources
@@ -368,11 +381,32 @@ public class LensSessionImpl extends HiveSessionImpl {
   }
 
   /**
-   * Return resources which are added statically to the current database
+   * Return resources which are added statically to the database
    * @return
    */
   public Collection<ResourceEntry> getDBResources(String database) {
-    return getDbResService().getResourcesForDatabase(database);
+    synchronized (failedDBResources) {
+      List<ResourceEntry> failed = failedDBResources.get(database);
+      if (failed == null && getDbResService().getResourcesForDatabase(database) != null) {
+        failed = new ArrayList<ResourceEntry>(getDbResService().getResourcesForDatabase(database));
+        failedDBResources.put(database, failed);
+      }
+      return failed;
+    }
+  }
+
+
+  /**
+   * Get session's resources which have to be added for the given database
+   */
+  public Collection<ResourceEntry> getPendingSessionResourcesForDatabase(String database) {
+    List<ResourceEntry> pendingResources = new ArrayList<ResourceEntry>();
+    for (ResourceEntry res : persistInfo.getResources()) {
+      if (!res.isAddedToDatabase(database)) {
+        pendingResources.add(res);
+      }
+    }
+    return pendingResources;
   }
 
   /**
@@ -400,6 +434,10 @@ public class LensSessionImpl extends HiveSessionImpl {
     @Getter
     transient int restoreCount;
 
+    /** Set of databases for which this resource has been added */
+    transient Set<String> databases;
+
+
     /**
      * Instantiates a new resource entry.
      *
@@ -413,6 +451,15 @@ public class LensSessionImpl extends HiveSessionImpl {
       this.type = type;
       this.location = location;
     }
+
+    public boolean isAddedToDatabase(String database) {
+      return databases.contains(database);
+    }
+
+    public void addToDatabase(String database) {
+      databases.add(database);
+    }
+
     /**
      * Restored resource.
      */
