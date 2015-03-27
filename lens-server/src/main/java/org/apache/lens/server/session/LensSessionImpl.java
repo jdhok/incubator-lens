@@ -435,7 +435,7 @@ public class LensSessionImpl extends HiveSessionImpl {
     transient int restoreCount;
 
     /** Set of databases for which this resource has been added */
-    transient Set<String> databases;
+    transient final Set<String> databases = new HashSet<String>();
 
 
     /**
