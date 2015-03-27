@@ -1439,10 +1439,8 @@ public class TestQueryService extends LensJerseyTest {
     LOG.info("@@@ Opened session " + sessionHandle.getPublicId() + " with database " + LensTestUtil.DB_WITH_JARS);
     LensSessionImpl session = sessionService.getSession(sessionHandle);
 
-    // Current database should not have any pending resources to add since the first add jar call itself
-    // will mark resource as added for the databse
-    Assert.assertEquals(session.getPendingSessionResourcesForDatabase(LensTestUtil.DB_WITH_JARS).size(), 0);
-    // We haven't yet switched to DB2, so it should have a pending resource to be added
+    // Jars should be pending until query is run
+    Assert.assertEquals(session.getPendingSessionResourcesForDatabase(LensTestUtil.DB_WITH_JARS).size(), 1);
     Assert.assertEquals(session.getPendingSessionResourcesForDatabase(LensTestUtil.DB_WITH_JARS_2).size(), 1);
 
     final String tableInDBWithJars = "testHiveDriverGetsDBJars";

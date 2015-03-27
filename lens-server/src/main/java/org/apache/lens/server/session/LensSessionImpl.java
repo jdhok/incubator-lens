@@ -272,7 +272,6 @@ public class LensSessionImpl extends HiveSessionImpl {
    */
   public void addResource(String type, String path) {
     ResourceEntry resource = new ResourceEntry(type, path);
-    resource.addToDatabase(getSessionState().getCurrentDatabase());
     persistInfo.getResources().add(resource);
     synchronized (sessionDbClassLoaders) {
       // Update all DB class loaders

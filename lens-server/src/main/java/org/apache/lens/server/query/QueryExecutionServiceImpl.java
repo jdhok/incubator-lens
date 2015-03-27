@@ -2032,26 +2032,6 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
     }
   }
 
-  /*
-   * (non-Javadoc)
-   *
-   * @see org.apache.lens.server.LensService#addResource(org.apache.lens.api.LensSessionHandle, java.lang.String,
-   * java.lang.String)
-   */
-  public void addResource(LensSessionHandle sessionHandle, String type, String path) throws LensException {
-    try {
-      acquire(sessionHandle);
-      String command = "add " + type.toLowerCase() + " " + path;
-      for (LensDriver driver : drivers.values()) {
-        if (driver instanceof HiveDriver) {
-          driver.execute(createResourceQuery(command, sessionHandle, driver));
-        }
-      }
-    } finally {
-      release(sessionHandle);
-    }
-  }
-
   /**
    * Creates the add/delete resource query.
    *
