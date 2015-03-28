@@ -150,7 +150,7 @@ public class HiveDriver implements LensDriver {
    * @param database lens database
    * @return true if resources have been already added to this session + db pair
    */
-  public boolean areDBRsourcesAddedForSession(String sessionHandle, String database) {
+  public boolean areDBResourcesAddedForSession(String sessionHandle, String database) {
     String key = sessionDbKey(sessionHandle, database);
     SessionHandle hiveSession = lensToHiveSession.get(key);
     return hiveSession != null
@@ -159,8 +159,9 @@ public class HiveDriver implements LensDriver {
   }
 
   /**
-   * Tell Hive driver that resources have been added for this session
-   * @param sessionHandle
+   * Tell Hive driver that resources have been added for this session and for the given database
+   * @param sessionHandle lens session identifier
+   * @param database lens database
    */
   public void setResourcesAddedForSession(String sessionHandle, String database) {
     SessionHandle hiveSession = lensToHiveSession.get(sessionDbKey(sessionHandle, database));

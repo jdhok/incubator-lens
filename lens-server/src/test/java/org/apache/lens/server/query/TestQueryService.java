@@ -1453,7 +1453,7 @@ public class TestQueryService extends LensJerseyTest {
 
       for (LensDriver driver : queryService.getDrivers()) {
         if (driver instanceof HiveDriver) {
-          addedToHiveDriver = ((HiveDriver) driver).areDBRsourcesAddedForSession(sessionHandle.getPublicId().toString(),
+          addedToHiveDriver = ((HiveDriver) driver).areDBResourcesAddedForSession(sessionHandle.getPublicId().toString(),
             LensTestUtil.DB_WITH_JARS);
         }
       }

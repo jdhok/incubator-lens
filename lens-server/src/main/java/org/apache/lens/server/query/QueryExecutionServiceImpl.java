@@ -52,6 +52,7 @@ import org.apache.lens.server.session.LensSessionImpl;
 import org.apache.lens.server.stats.StatisticsService;
 import org.apache.lens.server.util.UtilityMethods;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -2368,10 +2369,10 @@ public class QueryExecutionServiceImpl extends LensService implements QueryExecu
 
     // Add resources if either they haven't been marked as added on the session, or if Hive driver says they need
     // to be added to the corresponding hive driver
-    if (!hiveDriver.areDBRsourcesAddedForSession(sessionIdentifier, ctx.getDatabase())) {
+    if (!hiveDriver.areDBResourcesAddedForSession(sessionIdentifier, ctx.getDatabase())) {
       Collection<LensSessionImpl.ResourceEntry> dbResources = session.getDBResources(ctx.getDatabase());
 
-      if (dbResources!= null && !dbResources.isEmpty()) {
+      if (CollectionUtils.isNotEmpty(dbResources)) {
         LOG.info("Proceeding to add resources for DB "
           + session.getCurrentDatabase() + " for query " + ctx.getLogHandle() + " resources: " + dbResources);
 
