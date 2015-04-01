@@ -58,7 +58,7 @@ class AliasReplacer implements ContextRewriter {
     colToTableAlias = new HashMap<String, String>();
 
     extractTabAliasForCol(cubeql);
-    doFieldValidation(cubeql);
+    findDimAttributesAndMeasures(cubeql);
 
     // Rewrite the all the columns in the query with table alias prefixed.
     // If col1 of table tab1 is accessed, it would be changed as tab1.col1.
@@ -96,10 +96,12 @@ class AliasReplacer implements ContextRewriter {
 
   }
 
-  // Finds all queried dim-attributes and measures from cube
-  // If all fields in cube are not queryable together, does the validation
-  // wrt to derived cubes.
-  private void doFieldValidation(CubeQueryContext cubeql) throws SemanticException {
+  /**
+   * Figure out queried dim attributes and measures from the cube query context
+   * @param cubeql
+   * @throws SemanticException
+   */
+  private void findDimAttributesAndMeasures(CubeQueryContext cubeql) throws SemanticException {
     CubeInterface cube = cubeql.getCube();
     if (cube != null) {
       Set<String> cubeColsQueried = cubeql.getColumnsQueried(cube.getName());

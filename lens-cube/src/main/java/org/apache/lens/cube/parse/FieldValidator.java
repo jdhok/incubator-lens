@@ -147,10 +147,21 @@ public class FieldValidator implements ContextRewriter {
           if (cubeql.getJoinchains().containsKey(tabName)) {
             // this 'tabName' is a join chain, so add all source columns
             chainSourceColumns.addAll(cubeql.getJoinchains().get(tabName).getSourceColumns());
-          } else if (tabName.equalsIgnoreCase(cubeql.getAliasForTabName(cube.getName()))
+          }
+          // Alternatively, check if this is a dimension attribute
+          else if (tabName.equalsIgnoreCase(cubeql.getAliasForTabName(cube.getName()))
             && cube.getDimAttributeNames().contains(colName)) {
-            // This is a dim attribute, needs to be validated
-            dimAttributes.add(colName);
+
+            // If this is a referenced dim attribute leading to a chain, then instead of adding this
+            // column, we add the source columns of the chain.
+            if (cube.getDimAttributeByName(colName) instanceof ReferencedDimAtrribute
+              && ((ReferencedDimAtrribute) cube.getDimAttributeByName(colName)).isChainedColumn()) {
+              ReferencedDimAtrribute rdim = (ReferencedDimAtrribute) cube.getDimAttributeByName(colName);
+              chainSourceColumns.addAll(cube.getChainByName(rdim.getChainName()).getSourceColumns());
+            } else {
+              // This is a dim attribute, needs to be validated
+              dimAttributes.add(colName);
+            }
           }
         }
       }
