@@ -61,7 +61,7 @@ public class TestBaseCubeQueries extends TestQueryRewrite {
     e = getSemanticExceptionInRewrite("select cityStateCapital, SUM(msr1) from basecube" + " where " + TWO_DAYS_RANGE,
       conf);
     Assert.assertEquals(e.getCanonicalErrorMsg().getErrorCode(), ErrorMsg.FIELDS_NOT_QUERYABLE.getErrorCode());
-    Assert.assertTrue(e.getMessage().contains("citystatecapital") && e.getMessage().contains("msr1"));
+    Assert.assertTrue(e.getMessage().contains("citystatecapital") && e.getMessage().contains("msr1"), e.getMessage());
 
     e = getSemanticExceptionInRewrite("select cityState.name, SUM(msr1) from basecube" + " where " + TWO_DAYS_RANGE,
       conf);
