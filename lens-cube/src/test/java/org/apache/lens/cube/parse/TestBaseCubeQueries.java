@@ -87,7 +87,6 @@ public class TestBaseCubeQueries extends TestQueryRewrite {
     e = getSemanticExceptionInRewrite("select msr11 + msr2 from basecube" + " where " + TWO_DAYS_RANGE, conf);
     Assert.assertEquals(e.getCanonicalErrorMsg().getErrorCode(),
       ErrorMsg.EXPRESSION_NOT_IN_ANY_FACT.getErrorCode());
-
     // no fact has the all the dimensions queried
     e = getSemanticExceptionInRewrite("select dim1, stateid, msr3, msr13 from basecube" + " where " + TWO_DAYS_RANGE,
       conf);

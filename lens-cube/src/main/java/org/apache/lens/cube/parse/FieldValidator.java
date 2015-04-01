@@ -27,10 +27,12 @@ import org.apache.lens.cube.metadata.ReferencedDimAtrribute;
 
 import org.apache.hadoop.hive.ql.ErrorMsg;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
+import org.apache.hadoop.hive.ql.parse.ASTNode;
+import org.apache.hadoop.hive.ql.parse.HiveParser;
 import org.apache.hadoop.hive.ql.parse.SemanticException;
 
 /**
- * Validate fields based on cube queriability
+ * Validate fields based on cube queryability
  */
 public class FieldValidator implements ContextRewriter {
 
@@ -54,12 +56,17 @@ public class FieldValidator implements ContextRewriter {
         throw new SemanticException(e);
       }
 
-      Set<String> queriedDimAttrs = new LinkedHashSet<String>(cubeql.getQueriedDimAttrs());
+      // dim attributes and chained source columns should only come from WHERE and GROUP BY ASTs
+      Set<String> queriedDimAttrs = new LinkedHashSet<String>();
       Set<String> queriedMsrs = new LinkedHashSet<String>(cubeql.getQueriedMsrs());
+      Set<String> chainedSrcColumns = new HashSet<String>();
+
+      findDimAttrsAndChainSourceColumns(cubeql, cubeql.getGroupByAST(), queriedDimAttrs, chainedSrcColumns);
+      findDimAttrsAndChainSourceColumns(cubeql, cubeql.getWhereAST(), queriedDimAttrs, chainedSrcColumns);
 
       // remove chained ref columns from field validation
       Iterator<String> iter = queriedDimAttrs.iterator();
-      Set<String> chainedSrcColumns = new HashSet<String>();
+
       while (iter.hasNext()) {
         String attr = iter.next();
         if (cube.getDimAttributeByName(attr) instanceof ReferencedDimAtrribute
@@ -69,9 +76,7 @@ public class FieldValidator implements ContextRewriter {
           chainedSrcColumns.addAll(cube.getChainByName(rdim.getChainName()).getSourceColumns());
         }
       }
-      for (JoinChain chainQueried : cubeql.getJoinchains().values()) {
-        chainedSrcColumns.addAll(chainQueried.getSourceColumns());
-      }
+
       // do validation
       // Find atleast one derived cube which contains all the dimensions
       // queried.
@@ -112,4 +117,45 @@ public class FieldValidator implements ContextRewriter {
     }
     return nonQueryableFields;
   }
+
+
+  private void findDimAttrsAndChainSourceColumns(final CubeQueryContext cubeql,
+                                                 final ASTNode tree,
+                                                 final Set<String> dimAttributes,
+                                                 final Set<String> chainSourceColumns) throws SemanticException {
+    if (tree == null) {
+      return;
+    }
+
+    final boolean hasCube = cubeql.hasCubeInQuery();
+    final CubeInterface cube = cubeql.getCube();
+
+    HQLParser.bft(tree, new HQLParser.ASTNodeVisitor() {
+      @Override
+      public void visit(HQLParser.TreeNode treeNode) throws SemanticException {
+        if (!hasCube) return;
+
+        ASTNode astNode = treeNode.getNode();
+        if (astNode.getToken().getType() == HiveParser.DOT) {
+          // At this point alias replacer has run, so all columns are of the type table.column name
+          ASTNode aliasNode = HQLParser.findNodeByPath((ASTNode) astNode.getChild(0), HiveParser.Identifier);
+          String tabName = aliasNode.getText().toLowerCase().trim();
+          ASTNode colNode = (ASTNode) astNode.getChild(1);
+          String colName = colNode.getText().toLowerCase().trim();
+
+          // Check if table is a join chain
+          if (cubeql.getJoinchains().containsKey(tabName)) {
+            // this 'tabName' is a join chain, so add all source columns
+            chainSourceColumns.addAll(cubeql.getJoinchains().get(tabName).getSourceColumns());
+          } else if (tabName.equalsIgnoreCase(cubeql.getAliasForTabName(cube.getName()))
+            && cube.getDimAttributeNames().contains(colName)) {
+            // This is a dim attribute, needs to be validated
+            dimAttributes.add(colName);
+          }
+        }
+      }
+    });
+
+  }
+
 }
