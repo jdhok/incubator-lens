@@ -58,6 +58,18 @@ public class TestBaseCubeQueries extends TestQueryRewrite {
     Assert.assertEquals(e.getCanonicalErrorMsg().getErrorCode(), ErrorMsg.FIELDS_NOT_QUERYABLE.getErrorCode());
     Assert.assertTrue(e.getMessage().contains("dim2") && e.getMessage().contains("msr1"));
 
+    // Query with only measure should pass, since dim is not in where or group by
+    String hql = rewrite("select SUM(msr1), "
+      + "SUM(CASE WHEN cityState.name ='foo' THEN msr2"
+      + " WHEN dim2 = 'bar' THEN msr1 ELSE msr2 END) "
+      + "from basecube where " + TWO_DAYS_RANGE, conf);
+    Assert.assertNotNull(hql);
+
+    // This query should fail because chain ref in where clause
+    e = getSemanticExceptionInRewrite("select SUM(msr1), SUM(case WHEN cityState.name ='foo' THEN msr2 ELSE msr1 END) "
+      + "from basecube where " + TWO_DAYS_RANGE + " AND cityState.name='foo'", conf);
+    Assert.assertEquals(e.getCanonicalErrorMsg().getErrorCode(), ErrorMsg.FIELDS_NOT_QUERYABLE.getErrorCode());
+
     e = getSemanticExceptionInRewrite("select cityStateCapital, SUM(msr1) from basecube" + " where " + TWO_DAYS_RANGE,
       conf);
     Assert.assertEquals(e.getCanonicalErrorMsg().getErrorCode(), ErrorMsg.FIELDS_NOT_QUERYABLE.getErrorCode());
@@ -110,6 +122,9 @@ public class TestBaseCubeQueries extends TestQueryRewrite {
         }
       }
     );
+
+
+
   }
 
 

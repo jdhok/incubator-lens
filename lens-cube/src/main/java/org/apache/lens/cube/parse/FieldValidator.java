@@ -22,7 +22,6 @@ import java.util.*;
 
 import org.apache.lens.cube.metadata.CubeInterface;
 import org.apache.lens.cube.metadata.DerivedCube;
-import org.apache.lens.cube.metadata.JoinChain;
 import org.apache.lens.cube.metadata.ReferencedDimAtrribute;
 
 import org.apache.hadoop.hive.ql.ErrorMsg;
@@ -64,19 +63,6 @@ public class FieldValidator implements ContextRewriter {
       findDimAttrsAndChainSourceColumns(cubeql, cubeql.getGroupByAST(), queriedDimAttrs, chainedSrcColumns);
       findDimAttrsAndChainSourceColumns(cubeql, cubeql.getWhereAST(), queriedDimAttrs, chainedSrcColumns);
 
-      // remove chained ref columns from field validation
-      Iterator<String> iter = queriedDimAttrs.iterator();
-
-      while (iter.hasNext()) {
-        String attr = iter.next();
-        if (cube.getDimAttributeByName(attr) instanceof ReferencedDimAtrribute
-          && ((ReferencedDimAtrribute) cube.getDimAttributeByName(attr)).isChainedColumn()) {
-          iter.remove();
-          ReferencedDimAtrribute rdim = (ReferencedDimAtrribute)cube.getDimAttributeByName(attr);
-          chainedSrcColumns.addAll(cube.getChainByName(rdim.getChainName()).getSourceColumns());
-        }
-      }
-
       // do validation
       // Find atleast one derived cube which contains all the dimensions
       // queried.
@@ -89,10 +75,13 @@ public class FieldValidator implements ContextRewriter {
           derivedCubeFound = true;
         }
       }
+
       Set<String> nonQueryableFields = getNonQueryableAttributes(cubeql);
+
       if (!derivedCubeFound && !nonQueryableFields.isEmpty()) {
         throw new SemanticException(ErrorMsg.FIELDS_NOT_QUERYABLE, nonQueryableFields.toString());
       }
+
       if (!queriedMsrs.isEmpty()) {
         // Add appropriate message to know which fields are not queryable together
         if (!nonQueryableFields.isEmpty()) {
@@ -108,6 +97,7 @@ public class FieldValidator implements ContextRewriter {
   private Set<String> getNonQueryableAttributes(CubeQueryContext cubeql) {
     Set<String> nonQueryableFields = new LinkedHashSet<String>();
     nonQueryableFields.addAll(cubeql.getQueriedDimAttrs());
+
     for (String joinChainAlias : cubeql.getJoinchains().keySet()) {
       if (cubeql.getColumnsQueried(joinChainAlias) != null) {
         for (String chaincol : cubeql.getColumnsQueried(joinChainAlias)) {
@@ -119,22 +109,21 @@ public class FieldValidator implements ContextRewriter {
   }
 
 
+  // Traverse parse tree to figure out dimension attributes of the cubes and join chains
+  // present in the AST.
   private void findDimAttrsAndChainSourceColumns(final CubeQueryContext cubeql,
                                                  final ASTNode tree,
                                                  final Set<String> dimAttributes,
                                                  final Set<String> chainSourceColumns) throws SemanticException {
-    if (tree == null) {
+    if (tree == null || !cubeql.hasCubeInQuery()) {
       return;
     }
 
-    final boolean hasCube = cubeql.hasCubeInQuery();
     final CubeInterface cube = cubeql.getCube();
 
     HQLParser.bft(tree, new HQLParser.ASTNodeVisitor() {
       @Override
       public void visit(HQLParser.TreeNode treeNode) throws SemanticException {
-        if (!hasCube) return;
-
         ASTNode astNode = treeNode.getNode();
         if (astNode.getToken().getType() == HiveParser.DOT) {
           // At this point alias replacer has run, so all columns are of the type table.column name
@@ -147,10 +136,9 @@ public class FieldValidator implements ContextRewriter {
           if (cubeql.getJoinchains().containsKey(tabName)) {
             // this 'tabName' is a join chain, so add all source columns
             chainSourceColumns.addAll(cubeql.getJoinchains().get(tabName).getSourceColumns());
-          }
-          // Alternatively, check if this is a dimension attribute
-          else if (tabName.equalsIgnoreCase(cubeql.getAliasForTabName(cube.getName()))
+          } else if (tabName.equalsIgnoreCase(cubeql.getAliasForTabName(cube.getName()))
             && cube.getDimAttributeNames().contains(colName)) {
+            // Alternatively, check if this is a dimension attribute
 
             // If this is a referenced dim attribute leading to a chain, then instead of adding this
             // column, we add the source columns of the chain.
