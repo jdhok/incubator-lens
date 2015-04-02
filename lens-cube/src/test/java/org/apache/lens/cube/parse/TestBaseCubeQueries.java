@@ -66,9 +66,16 @@ public class TestBaseCubeQueries extends TestQueryRewrite {
     Assert.assertNotNull(hql);
 
     // This query should fail because chain ref in where clause
-    e = getSemanticExceptionInRewrite("select SUM(msr1), SUM(case WHEN cityState.name ='foo' THEN msr2 ELSE msr1 END) "
+    e = getSemanticExceptionInRewrite("select SUM(msr1), "
+      + "SUM(case WHEN cityState.capital ='foo' THEN msr2 ELSE msr1 END) "
       + "from basecube where " + TWO_DAYS_RANGE + " AND cityState.name='foo'", conf);
     Assert.assertEquals(e.getCanonicalErrorMsg().getErrorCode(), ErrorMsg.FIELDS_NOT_QUERYABLE.getErrorCode());
+    // Error message should contain chain_name.col_name and it should not contain dim attributes in select clause
+    // it should also contain the measure name
+    Assert.assertTrue(e.getMessage().contains("citystate.name")
+      && e.getMessage().contains("msr1")
+      && !e.getMessage().contains("capital"), e.getMessage());
+
 
     e = getSemanticExceptionInRewrite("select cityStateCapital, SUM(msr1) from basecube" + " where " + TWO_DAYS_RANGE,
       conf);

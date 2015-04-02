@@ -59,9 +59,12 @@ public class FieldValidator implements ContextRewriter {
       Set<String> queriedDimAttrs = new LinkedHashSet<String>();
       Set<String> queriedMsrs = new LinkedHashSet<String>(cubeql.getQueriedMsrs());
       Set<String> chainedSrcColumns = new HashSet<String>();
+      Set<String> nonQueryableFields = new LinkedHashSet<String>();
 
-      findDimAttrsAndChainSourceColumns(cubeql, cubeql.getGroupByAST(), queriedDimAttrs, chainedSrcColumns);
-      findDimAttrsAndChainSourceColumns(cubeql, cubeql.getWhereAST(), queriedDimAttrs, chainedSrcColumns);
+      findDimAttrsAndChainSourceColumns(cubeql, cubeql.getGroupByAST(), queriedDimAttrs,
+        chainedSrcColumns, nonQueryableFields);
+      findDimAttrsAndChainSourceColumns(cubeql, cubeql.getWhereAST(), queriedDimAttrs,
+        chainedSrcColumns, nonQueryableFields);
 
       // do validation
       // Find atleast one derived cube which contains all the dimensions
@@ -75,8 +78,6 @@ public class FieldValidator implements ContextRewriter {
           derivedCubeFound = true;
         }
       }
-
-      Set<String> nonQueryableFields = getNonQueryableAttributes(cubeql);
 
       if (!derivedCubeFound && !nonQueryableFields.isEmpty()) {
         throw new SemanticException(ErrorMsg.FIELDS_NOT_QUERYABLE, nonQueryableFields.toString());
@@ -94,27 +95,13 @@ public class FieldValidator implements ContextRewriter {
     }
   }
 
-  private Set<String> getNonQueryableAttributes(CubeQueryContext cubeql) {
-    Set<String> nonQueryableFields = new LinkedHashSet<String>();
-    nonQueryableFields.addAll(cubeql.getQueriedDimAttrs());
-
-    for (String joinChainAlias : cubeql.getJoinchains().keySet()) {
-      if (cubeql.getColumnsQueried(joinChainAlias) != null) {
-        for (String chaincol : cubeql.getColumnsQueried(joinChainAlias)) {
-          nonQueryableFields.add(joinChainAlias + "." + chaincol);
-        }
-      }
-    }
-    return nonQueryableFields;
-  }
-
-
   // Traverse parse tree to figure out dimension attributes of the cubes and join chains
   // present in the AST.
   private void findDimAttrsAndChainSourceColumns(final CubeQueryContext cubeql,
                                                  final ASTNode tree,
                                                  final Set<String> dimAttributes,
-                                                 final Set<String> chainSourceColumns) throws SemanticException {
+                                                 final Set<String> chainSourceColumns,
+                                                 final Set<String> nonQueryableColumns) throws SemanticException {
     if (tree == null || !cubeql.hasCubeInQuery()) {
       return;
     }
@@ -136,9 +123,12 @@ public class FieldValidator implements ContextRewriter {
           if (cubeql.getJoinchains().containsKey(tabName)) {
             // this 'tabName' is a join chain, so add all source columns
             chainSourceColumns.addAll(cubeql.getJoinchains().get(tabName).getSourceColumns());
+            nonQueryableColumns.add(tabName + "." + colName);
           } else if (tabName.equalsIgnoreCase(cubeql.getAliasForTabName(cube.getName()))
             && cube.getDimAttributeNames().contains(colName)) {
-            // Alternatively, check if this is a dimension attribute
+            // Alternatively, check if this is a dimension attribute, if yes add it to the dim attribute set
+            // and non queryable fields set
+            nonQueryableColumns.add(colName);
 
             // If this is a referenced dim attribute leading to a chain, then instead of adding this
             // column, we add the source columns of the chain.
